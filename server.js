@@ -269,7 +269,7 @@ server.route('/current_game')
 	
 	fs.readFile(game_f, function(err, game_str) {
 		if (err) {
-			log.error(`failed to load current game ${game_id}: ${err.message}`)
+			log.error(`failed to load current game ${game_id}: ${err.message}`,ctx)
 			result.result = 'fail'
 			result.why = 'not found'
 		}
@@ -332,32 +332,50 @@ server.route('/update_game')
 		
 		result.action = 'game_over'
 		
+		let passed = true
+		let promises = []
+		
 		// remove current game
-		fs.unlink(game_f, function(err) {
-			if (err) {
-				result.result = 'fail'
-				result.why = 'delete incomplete game file'
-				
-				res.json(result)
-			}
-			else {
-				// add old game
+		promises.push(
+			new Promise(function(resolve) {
+				fs.unlink(game_f, function(err) {
+					if (err) {
+						result.why = 'delete incomplete game file'
+						passed = false
+					}
+					resolve()
+				})
+			})
+		)
+		
+		// add old game
+		promises.push(
+			new Promise(function(resolve) {
 				game_f = `${OLD_GAMES_DIR_PATH}/${game.id}.json`
+				
 				fs.writeFile(game_f, JSON.stringify(game), function(err) {
 					if (err) {
-						result.result = 'fail'
 						result.why = 'add complete game file'
+						passed = false
 					}
-					else {
-						// update players' account files
-						age_game_in_accounts(game.id, game.usernames)
-						
-						result.result = 'pass'
-					}
-					
-					res.json(result)
+					resolve()
 				})
+			})
+		)
+		
+		// update players' account files
+		age_game_in_accounts(game.id, game.usernames)
+		
+		Promise.all(promises)
+		.then(() => {
+			if (passed) {
+				result.result = 'pass'
 			}
+			else {
+				result.result = 'fail'
+			}
+			
+			res.json(result)
 		})
 	}
 })

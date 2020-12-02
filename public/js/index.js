@@ -26,6 +26,58 @@ let UPDATE_GAME_URL = '/update_game'
 let AVAILABLE_GAMES_URL = '/available_games'
 let GAME_SUMMARIES_URL = '/game_summaries'
 
+let pending_game_template = `
+<div class="border-top">
+	<div class="row">
+		<div class="col text-secondary">game id</div>
+		<div class="pending-game-id col"></div>
+	</div>
+	<div class="row">
+		<div class="col text-secondary">usernames</div>
+		<div class="pending-game-usernames col"></div>
+	</div>
+	<div class="row">
+		<div class="col text-secondary">round</div>
+		<div class="pending-game-round col"></div>
+	</div>		
+	<div class="row">
+		<div class="col text-secondary">scores</div>
+		<div class="pending-game-scores col"></div>
+	</div>
+</div>`
+
+let game_summary_template = `
+<div class="border-top">
+	<div class="row">
+		<div class="col text-secondary">game id</div>
+		<div class="history-game-id col"></div>
+	</div>
+	<div class="row">
+		<div class="col text-secondary">winner</div>
+		<div class="history-game-winner col"></div>
+	</div>
+	<div class="row">
+		<div class="col text-secondary">frame limit</div>
+		<div class="history-game-frame-limit col"></div>
+	</div>
+	<div class="row">
+		<div class="col text-secondary">teams</div>
+		<div class="history-game-num-teams col"></div>
+	</div>
+	<div class="row">
+		<div class="col text-secondary">usernames</div>
+		<div class="history-game-usernames col"></div>
+	</div>
+	<div class="row">
+		<div class="col text-secondary">scores</div>
+		<div class="history-game-scores col"></div>
+	</div>
+	<div class="row">
+		<div class="col text-secondary">rounds</div>
+		<div class="history-game-rounds col"></div>
+	</div>
+</div>`
+
 let game_over_template = `
 	<div id="game-over" class="d-flex flex-column justify-content-center h-100">
 		<button id="next-game" class="btn btn-info">next game</button>
@@ -81,7 +133,11 @@ $(document).ready(function() {
 								.then((available_game) => {
 									saved_game(available_game)
 								})
-								.catch(() => {
+								.catch((err) => {
+									if (err) {
+										console.log(err)
+									}
+									
 									index_log.error('failed to fetch available game',ctx)
 									new_game()
 								})
@@ -222,28 +278,6 @@ function game_stats() {
 function pending_game_stats(game_summary) {
 	let ctx = 'pending_game_stats'
 	
-	let pending_games_el = $('#pending-games')
-	
-	let pending_game_template = `
-	<div class="border-top">
-		<div class="row">
-			<div class="col text-secondary">game id</div>
-			<div class="pending-game-id col"></div>
-		</div>
-		<div class="row">
-			<div class="col text-secondary">usernames</div>
-			<div class="pending-game-usernames col"></div>
-		</div>
-		<div class="row">
-			<div class="col text-secondary">round</div>
-			<div class="pending-game-round col"></div>
-		</div>		
-		<div class="row">
-			<div class="col text-secondary">scores</div>
-			<div class="pending-game-scores col"></div>
-		</div>
-	</div>`
-	
 	let pending_game = $(pending_game_template)
 	
 	pending_game.find('.pending-game-id').html(
@@ -270,6 +304,55 @@ function pending_game_stats(game_summary) {
 	)
 	
 	$('#pending-games').append(pending_game)
+}
+
+function old_game_stats(game) {
+	let game_summary = $(game_summary_template)
+	
+	game_summary.find('.history-game-id')
+	.html(game.id)
+	
+	let totals = Array(game.num_teams).fill(0)
+	for (let scoreboard of game.scores) {
+		for (let i=0; i<scoreboard.length; i++) {
+			totals[i] += scoreboard[i]
+		}
+	}
+	
+	let winner_team = -1
+	let winner_score = 0
+	let winner_username = 'TIE'
+	
+	if (game.end_result != Game.RESULT_TIE) {
+		for (let i=0; i<totals.length; i++) {
+			if (totals[i] > winner_score) {
+				winner_score = totals[i]
+				winner_team = i
+			}
+		}
+		
+		winner_username = game.usernames[winner_team]
+	}
+	
+	game_summary.find('.history-game-winner')
+	.html(winner_username)
+	
+	game_summary.find('.history-game-usernames')
+	.html(game.usernames.join(', '))
+	
+	game_summary.find('.history-game-num-teams')
+	.html(game.num_teams)
+	
+	game_summary.find('.history-game-scores')
+	.html(totals.join(' '))
+	
+	game_summary.find('.history-game-rounds')
+	.html(game.match_limit/2)
+	
+	game_summary.find('.history-game-frame-limit')
+	.html(game.frame_limit)
+	
+	$('#history-games').append(game_summary)
 }
 
 function load_current_game() {
@@ -488,87 +571,8 @@ function load_old_games() {
 				if (res.result == 'pass') {
 					index_log.debug(`fetched ${res.games.length} old games; loading history`)
 					
-					let history_games_el = $('#history-games')
-					
-					let game_summary_template = `
-					<div class="border-top">
-						<div class="row">
-							<div class="col text-secondary">game id</div>
-							<div class="history-game-id col"></div>
-						</div>
-						<div class="row">
-							<div class="col text-secondary">winner</div>
-							<div class="history-game-winner col"></div>
-						</div>
-						<div class="row">
-							<div class="col text-secondary">frame limit</div>
-							<div class="history-game-frame-limit col"></div>
-						</div>
-						<div class="row">
-							<div class="col text-secondary">teams</div>
-							<div class="history-game-num-teams col"></div>
-						</div>
-						<div class="row">
-							<div class="col text-secondary">usernames</div>
-							<div class="history-game-usernames col"></div>
-						</div>
-						<div class="row">
-							<div class="col text-secondary">scores</div>
-							<div class="history-game-scores col"></div>
-						</div>
-						<div class="row">
-							<div class="col text-secondary">rounds</div>
-							<div class="history-game-rounds col"></div>
-						</div>
-					</div>`
-					
 					for (let game of res.games) {
-						let game_summary = $(game_summary_template)
-						
-						game_summary.find('.history-game-id')
-						.html(game.id)
-						
-						let totals = Array(game.num_teams).fill(0)
-						for (let scoreboard of game.scores) {
-							for (let i=0; i<scoreboard.length; i++) {
-								totals[i] += scoreboard[i]
-							}
-						}
-						
-						let winner_team = -1
-						let winner_score = 0
-						let winner_username = 'TIE'
-						
-						if (game.end_result != Game.RESULT_TIE) {
-							for (let i=0; i<totals.length; i++) {
-								if (totals[i] > winner_score) {
-									winner_score = totals[i]
-									winner_team = i
-								}
-							}
-							
-							winner_username = game.usernames[winner_team]
-						}
-						
-						game_summary.find('.history-game-winner')
-						.html(winner_username)
-						
-						game_summary.find('.history-game-usernames')
-						.html(game.usernames.join(', '))
-						
-						game_summary.find('.history-game-num-teams')
-						.html(game.num_teams)
-						
-						game_summary.find('.history-game-scores')
-						.html(totals.join(' '))
-						
-						game_summary.find('.history-game-rounds')
-						.html(game.match_limit/2)
-						
-						game_summary.find('.history-game-frame-limit')
-						.html(game.frame_limit)
-						
-						history_games_el.append(game_summary)
+						old_game_stats(game)
 					}
 					
 					resolve()
