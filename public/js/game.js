@@ -62,6 +62,12 @@ class Game {
 		}
 		else {
 			// saved game
+
+			// zero-length arrays can become undefined in comms
+			if (state.obstacles == undefined) {
+				state.obstacles = []
+			}
+			
 			game_log.debug(`loading saved game id=${state.id} frames=${state.frame_limit} obstacles=${state.obstacles.length}`, ctx)
 			this.id = state.id
 			this.frame_limit = state.frame_limit
