@@ -6,10 +6,17 @@
         <!--scales viewport depending on worldspace device width-->
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		
-        <meta name="description" content="Retry game."/>
+        <meta name="description" content="Refraction: A multiplayer semiturn-based game for 2-4 players."/>
         <meta name="author" content="Owen Gallagher"/>
         
-        <title>Retry</title>
+        <title>Refraction</title>
+		
+        <!-- css external -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/font/css/open-iconic-bootstrap.min.css">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+        
+        <!-- css internal -->
+        <link rel="stylesheet" type="text/css" href="css/style.css" />
         
         <!-- js external -->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
@@ -23,78 +30,85 @@
 		<script src="js/bullet.js"></script>
 		<script src="js/game.js"></script>
 		<script src="js/index.js"></script>
-        
-        <!-- css external -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/font/css/open-iconic-bootstrap.min.css">
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-        
-        <!-- css internal -->
-        <link rel="stylesheet" type="text/css" href="css/style.css" />
     </head>
     
-    <body class="h-100 container-fluid">
-		<div class="row">
-			<div id="center" class="col-lg-auto text-center bg-light">
-				<canvas id="game-canvas" style="display:none;"></canvas>
+    <body class="h-100 container-fluid bg-light">
+		<div class="row no-gutters pt-4">
+			<div id="left" class="col-lg py-2 px-1">
+				<div class="row">
+					<div id="login-form" class="col-6 col-lg-12 pb-2">
+						<div class="form-group">
+							<div class="input-group">
+								<div class="input-group-prepend">
+									<span class="input-group-text">username</span>
+								</div>
+								<input id="username" type="text" placeholder="" class="form-control">
+							</div>
+							<button id="login" class="btn btn-info form-control mt-2">
+								Login
+							</button>
+						</div>
+						<div id="directions"></div>
+					</div>
+					<div id="game-stats" class="col-6 col-lg-12 p-3">
+						<div class="text-left h3">
+							game stats
+						</div>
+						<div class="text-right">
+							<div class="row">
+								<div class="col text-secondary">game id</div>
+								<div id="game-id" class="col">
+								</div>
+							</div>
+							<div class="row">
+								<div class="col text-secondary">teams</div>
+								<div id="teams" class="col">
+								</div>
+							</div>
+							<div class="row">
+								<div class="col text-secondary">scores</div>
+								<div id="scores" class="col">
+								</div>
+							</div>
+							<div class="row">
+								<div class="col text-secondary">time</div>
+								<div class="col">
+									<span id="frame"></span>/<span id="frame-limit"></span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
-			<div id="right" class="col-lg bg-light py-4">
-				<div id="directions"></div>
-				<div id="login-form" class="form-group">
-					<div class="form-group">
-						<div class="input-group">
-							<div class="input-group-prepend">
-								<span class="input-group-text">username</span>
-							</div>
-							<input id="username" type="text" placeholder="" class="form-control">
-						</div>
-						<button id="login" class="btn btn-info form-control mt-2">
-							Login
-						</button>
+			<div id="center" class="col-lg-auto py-2 px-1 text-center">
+				<canvas id="game-canvas" style="display:none;"></canvas>
+				<div class="form-group">
+					<div class="custom-control custom-switch">
+						<input id="local-online-switch" type="checkbox" class="custom-control-input"/>
+						<label class="custom-control-label" for="local-online-switch">
+							mode: <strong id="local-online">local</strong>
+						</label>
 					</div>
 				</div>
-				<div id="game-stats" class="border border-bottom-0 p-3">
-					<div class="text-left h3">
-						game stats
-					</div>
-					<div class="text-right">
-						<div class="row">
-							<div class="col text-secondary">game id</div>
-							<div id="game-id" class="col">
-							</div>
+			</div>
+			<div id="right" class="col-lg py-2 px-1">
+				<div class="row p-3">
+					<div id="pending" class="col-6 col-lg-12">
+						<div class="text-left h3">
+							pending
 						</div>
-						<div class="row">
-							<div class="col text-secondary">teams</div>
-							<div id="teams" class="col">
-							</div>
-						</div>
-						<div class="row">
-							<div class="col text-secondary">scores</div>
-							<div id="scores" class="col">
-							</div>
-						</div>
-						<div class="row">
-							<div class="col text-secondary">time</div>
-							<div class="col">
-								<span id="frame"></span>/<span id="frame-limit"></span>
+						<div class="text-right">
+							<div id="pending-games" class="m-1">
 							</div>
 						</div>
 					</div>
-				</div>
-				<div id="pending" class="border p-3">
-					<div class="text-left h3">
-						pending
-					</div>
-					<div class="text-right">
-						<div id="pending-games" class="m-1">
+					<div id="history" class="col-6 col-lg-12">
+						<div class="text-left h3">
+							history
 						</div>
-					</div>
-				</div>
-				<div id="history" class="border p-3">
-					<div class="text-left h3">
-						history
-					</div>
-					<div class="text-right">
-						<div id="history-games" class="m-1">
+						<div class="text-right">
+							<div id="history-games" class="m-1">
+							</div>
 						</div>
 					</div>
 				</div>

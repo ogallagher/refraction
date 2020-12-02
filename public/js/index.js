@@ -8,7 +8,8 @@ Owen Gallagher
 // from index_logger.js
 index_log = new Logger('index', Logger.LEVEL_DEBUG)
 
-let test = false
+let editing = false
+let local = false
 let game = null
 let account = {
 	username: random_string(),
@@ -88,9 +89,50 @@ $(document).ready(function() {
 	
 	index_log.debug('window loaded',ctx)
 	
-	if (test) {
+	// init local-online switch
+	let mode = cookies_get('local_online_mode')
+	if (mode == null || mode == 'local') {
+		cookies_set('local_online_mode','local')
+		local = true
+		$('#local-online').html('local')
+	}
+	else {
+		cookies_set('local_online_mode','online')
+		local = false
+		$('#local-online').html('online')
+	}
+	
+	$('#local-online-switch')
+	.prop('checked', !local)
+	.change(on_local_online_switch)
+	
+	if (editing) {
+		let pending_game = $(pending_game_template)
+		let pending_games = $('#pending-games')
+		
+		for (let i=0; i<5; i++) {
+			pending_games.append(pending_game)
+		}
+		
+		let history_game = $(game_summary_template)
+		let history_games = $('#history-games')
+		for (let i=0; i<10; i++) {
+			history_games.append(history_game)
+		}
+		
+		$('#directions').html('\
+		Here are some directions.<br>\
+		You are currently in editing mode.')
+		
+		$('#game-canvas')
+		.prop('width', 600)
+		.prop('height', 600)
+		.addClass('bg-dark')
+		.show()
+	}
+	else if (local) {
 		$('#login-form').hide()
-		test_game()
+		local_game()
 	}
 	else {
 		index_log.debug('loading account', ctx)
@@ -180,7 +222,54 @@ $(document).ready(function() {
 	}
 })
 
-function test_game(game_state) {
+function on_local_online_switch() {
+	let los = $('#local-online-switch')
+	
+	if (los.prop('checked')) {
+		local = false
+		$('#local-online').html('online')
+		
+		// create game-over screen
+		$('#game-canvas').hide()
+		$('#center').append($(game_over_template))
+		$('#next-game').click(next_game)
+		
+		$('#directions')
+		.html('\
+		Switched to online mode; refreshed game to fetch latest available online match.')
+		
+		cookies_set('local_online_mode','online')
+		
+		if (game != null) {
+			// clear current game
+			let ci = account.current_games.indexOf(game.id)
+			account.current_games.splice(ci,1)
+			game = null
+		}
+	}
+	else {
+		local = true
+		$('#local-online').html('local')
+		
+		$('#game-over').remove()
+		$('#game-canvas').show()
+		
+		$('#directions')
+		.html('\
+		Switched to local mode. This game will not be sent to the server \
+		and will not be playable on other computers.')
+		
+		cookies_set('local_online_mode','local')
+		
+		if (game != null) {
+			game.on_finish = local_game
+		}
+	}
+	
+	los.prop('checked', !local)
+}
+
+function local_game(game_state) {
 	if (game == undefined) {
 		game = new Game($('#game-canvas'), random_string(), null, 2)
 	}
@@ -188,10 +277,10 @@ function test_game(game_state) {
 		let game_state = game.save_state()
 		game.remove()
 	
-		game = new Game($('#game-canvas'), random_string(), game_state, 2)
+		game = new Game($('#game-canvas'), random_string(), game_state)
 	}
-
-	game.on_finish = test_game
+	
+	game.on_finish = local_game
 
 	game_stats()
 }
