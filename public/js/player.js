@@ -5,7 +5,7 @@ Owen Gallagher
 
 */
 
-player_log = new Logger('player', Logger.LEVEL_DEBUG)
+player_log = new Logger('player')
 
 class Player {
 	/*
@@ -46,11 +46,10 @@ class Player {
 		}
 		
 		this.init = init
-		player_log.debug(`init player from ${JSON.stringify(this.init)}`)
+		player_log.debug(`init player from ${JSON.stringify(this.init)}`, ctx)
 		
 		this.team = init.team
 		this.base = this.game.bases[Game.team_to_base(this.team)]
-		console.log('base: ' + JSON.stringify(this.base))
 		
 		if (this.team < Game.TEAM_COLORS.length) {
 			this.color = new paper.Color(Game.TEAM_COLORS[this.team])

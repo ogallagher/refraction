@@ -5,7 +5,7 @@ Owen Gallagher
 
 */
 
-let bullet_log = new Logger('bullet', Logger.LEVEL_WARNING)
+let bullet_log = new Logger('bullet')
 
 class Bullet {
 	/*

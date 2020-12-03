@@ -5,14 +5,14 @@ Owen Gallagher
 
 */
 
-game_log = new Logger('game', Logger.LEVEL_DEBUG)
+game_log = new Logger('game')
 
 class Game {
 	/*
 	Game class.
 	*/
 	
-	constructor(canvas_el, username, state, num_teams=2, team=0) {
+	constructor(canvas_el, username, state, num_teams=2, team=0, local=false) {
 		/*
 		Game constructor
 		
@@ -38,6 +38,9 @@ class Game {
 		
 		let view_size = paper.view.size
 		game_log.debug(`view size = ${view_size}`, ctx)
+		
+		// set local vs online mode
+		this.local = local
 		
 		// set username for current team
 		this.username = username
@@ -528,18 +531,24 @@ class Game {
 	}
 	
 	finish() {
-		let view = this.paper.view
+		if (this.paper != null) {
+			// remove event handlers
+			this.paper.view.onFrame = null
+		}
 		
-		// remove event handlers
-		view.onFrame = undefined
+		this.remove()
 		
-		this.on_finish(this)
+		if (this.on_finish != null) {
+			this.on_finish(this)
+		}
 	}
 	
 	remove() {
 		// deactivate PaperScope
-		this.paper.remove()
-		this.paper = null
+		if (this.paper != null) {
+			this.paper.remove()
+			this.paper = null
+		}
 	}
 	
 	other_team() {
@@ -586,7 +595,7 @@ Game.OBSTACLES_MIN = 2
 Game.OBSTACLES_MAX = 5
 Game.OBSTACLE_SIZE_MIN = 40
 Game.OBSTACLE_RAD_MIN = Game.OBSTACLE_SIZE_MIN / 2
-Game.OBSTACLE_SIZE_MAX_PROP = 0.5
+Game.OBSTACLE_SIZE_MAX_PROP = 0.6
 Game.OBSTACLE_PROB_GROW = 0.5
 Game.OBSTACLE_PROB_ATTEN = 0.9
 

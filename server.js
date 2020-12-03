@@ -170,43 +170,6 @@ server.route('/account/login')
 	}
 })
 
-server.route('/account/current_games')
-.get(function(req,res) {
-	let ctx = 'account.current_games'
-	let username = req.query.username
-	
-	// get all current games involving this user
-	let account_f = `${ACCOUNTS_DIR_PATH}/${username}.json`
-	
-	let result = {
-		action: 'current_games',
-		result: null,
-		games: []
-	}
-	
-	if (fs.existsSync(account_f)) {
-		fs.readFile(account_f, function(err,account_str) {
-			if (err) {
-				result.result = 'fail'
-				result.why = 'fs read file'
-			}
-			else {
-				let account = JSON.parse(account_str)
-				
-				result.result = 'pass'
-				result.games = account.current_games
-			}
-			
-			res.json(result)
-		})
-	}
-	else {
-		result.result = 'fail'
-		result.why = 'no account'
-		res.json(result)
-	}
-})
-
 server.route('/account/old_games')
 .get(function(req,res) {
 	let ctx = 'account.old_games'
@@ -451,31 +414,24 @@ server.route('/available_games')
 	})
 })
 
-server.route('/game_summaries')
+server.route('/game_summary')
 .get(function(req,res) {
-	let ctx = 'game_summaries'
+	let ctx = 'game_summary'
 	
-	let promises = []
-	let summaries = []
-	for (let game_id of req.query.games) {
-		promises.push(
-			game_summary(game_id, true)
-			.then(function(summary) {
-				summaries.push(summary)
-			})
-			.catch(() => {
-				log.error(`failed to fetch summary for ${game_id}`)
-			})
-		)
-	}
-	
-	Promise.all(promises)
-	.then(() => {
-		let result = {
+	game_summary(req.query.game, true)
+	.then(function(summary) {
+		res.json({
 			result: 'pass',
-			games: summaries
-		}
-		res.json(result)
+			game: summary
+		})
+	})
+	.catch(() => {
+		log.error(`failed to fetch summary for ${game_id}`, ctx)
+		res.json({
+			result: 'fail',
+			why: 'no summary',
+			game: null
+		})
 	})
 })
 

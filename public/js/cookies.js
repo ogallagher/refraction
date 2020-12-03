@@ -11,7 +11,7 @@ const COOKIE_EXPIRATION = 24 * 60 * 60 * 1000
 const COOKIE_MAX_BYTES = 4096 //max number of bytes in a cookie
 const COOKIE_MAX_CHARS = COOKIE_MAX_BYTES / 2
 
-cookies_log = new Logger('cookies', Logger.LEVEL_WARNING)
+cookies_log = new Logger('cookies')
 
 //if cookie is too large, cookie_key --> [cookie_key[0], cookie_key[1], ...]
 function cookies_set(key,val) {

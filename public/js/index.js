@@ -6,7 +6,8 @@ Owen Gallagher
 */
 
 // from index_logger.js
-index_log = new Logger('index', Logger.LEVEL_DEBUG)
+index_log = new Logger('index', Logger.LEVEL_INFO)
+Logger.set_root(index_log)
 
 let editing = false
 let local = false
@@ -20,69 +21,11 @@ let account = {
 
 let ACCOUNT_URL = '/account'
 let LOGIN_URL = `${ACCOUNT_URL}/login`
-let CURR_GAMES_URL = `${ACCOUNT_URL}/current_games`
 let OLD_GAMES_URL = `${ACCOUNT_URL}/old_games`
 let CURR_GAME_URL = '/current_game'
 let UPDATE_GAME_URL = '/update_game'
 let AVAILABLE_GAMES_URL = '/available_games'
-let GAME_SUMMARIES_URL = '/game_summaries'
-
-let pending_game_template = `
-<div class="border-top">
-	<div class="row">
-		<div class="col text-secondary">game id</div>
-		<div class="pending-game-id col"></div>
-	</div>
-	<div class="row">
-		<div class="col text-secondary">usernames</div>
-		<div class="pending-game-usernames col"></div>
-	</div>
-	<div class="row">
-		<div class="col text-secondary">round</div>
-		<div class="pending-game-round col"></div>
-	</div>		
-	<div class="row">
-		<div class="col text-secondary">scores</div>
-		<div class="pending-game-scores col"></div>
-	</div>
-</div>`
-
-let game_summary_template = `
-<div class="border-top">
-	<div class="row">
-		<div class="col text-secondary">game id</div>
-		<div class="history-game-id col"></div>
-	</div>
-	<div class="row">
-		<div class="col text-secondary">winner</div>
-		<div class="history-game-winner col"></div>
-	</div>
-	<div class="row">
-		<div class="col text-secondary">frame limit</div>
-		<div class="history-game-frame-limit col"></div>
-	</div>
-	<div class="row">
-		<div class="col text-secondary">teams</div>
-		<div class="history-game-num-teams col"></div>
-	</div>
-	<div class="row">
-		<div class="col text-secondary">usernames</div>
-		<div class="history-game-usernames col"></div>
-	</div>
-	<div class="row">
-		<div class="col text-secondary">scores</div>
-		<div class="history-game-scores col"></div>
-	</div>
-	<div class="row">
-		<div class="col text-secondary">rounds</div>
-		<div class="history-game-rounds col"></div>
-	</div>
-</div>`
-
-let game_over_template = `
-	<div id="game-over" class="d-flex flex-column justify-content-center h-100">
-		<button id="next-game" class="btn btn-info">next game</button>
-	</div>`
+let GAME_SUMMARY_URL = '/game_summary'
 
 $(document).ready(function() {
 	let ctx = 'window.onload'
@@ -107,14 +50,14 @@ $(document).ready(function() {
 	.change(on_local_online_switch)
 	
 	if (editing) {
-		let pending_game = $(pending_game_template)
+		let pending_game = $(pending_game_cmp)
 		let pending_games = $('#pending-games')
 		
 		for (let i=0; i<5; i++) {
 			pending_games.append(pending_game)
 		}
 		
-		let history_game = $(game_summary_template)
+		let history_game = $(history_game_cmp)
 		let history_games = $('#history-games')
 		for (let i=0; i<10; i++) {
 			history_games.append(history_game)
@@ -137,78 +80,17 @@ $(document).ready(function() {
 	else {
 		index_log.debug('loading account', ctx)
 		load_account()
-		.then((res_account) => {
+		.then(function(res_account) {
 			account = res_account
 		})
 		.catch(() => {
-			// fail quietly
+			$('#directions').html('Failed to register/login. Try again later.')
 		})
 		.finally(() => {
 			index_log.info('username = ' + account.username, ctx)
 			
-			index_log.debug('requesting current games from server', ctx)
-			
-			load_current_games()
-			.then((games) => {
-				account.current_games = games
-			})
-			.catch((games) => {
-				// fail quietly
-			})
-			.finally(() => {
-				index_log.info('selecting a game', ctx)
-				
-				load_current_game()
-				.then((current_game) => {
-					if (current_game == null) {
-						// check available games
-						load_available_games()
-						.then((available_games) => {
-							if (available_games.length > 0) {
-								index_log.info(
-									`${available_games.length} games available; selecting first`,
-									ctx
-								)
-								
-								let game_id = available_games[0]
-								fetch_current_game(game_id)
-								.then((available_game) => {
-									saved_game(available_game)
-								})
-								.catch((err) => {
-									if (err) {
-										console.log(err)
-									}
-									
-									index_log.error('failed to fetch available game',ctx)
-									new_game()
-								})
-							}
-							else {
-								new_game()
-							}
- 						})
-					}
-					else {
-						saved_game(current_game)
-					}
-					
-					if (account.pending_games.length > 0) {
-						load_game_summaries(account.pending_games)
-						.then(function(pending_summaries) {
-							for (let pending of pending_summaries) {
-								pending_game_stats(pending)
-							}
-						})
-						.catch(() => {
-							index_log.error('failed to load pending games', ctx)
-						})
-					}
-				})
-				.catch((err) => {
-					index_log.error('failed to load game: ' + err.message, ctx)
-				})
-			})
+			index_log.info('selecting a game', ctx)
+			next_game()
 			
 			index_log.debug('loading old games', ctx)
 			load_old_games()
@@ -223,29 +105,44 @@ $(document).ready(function() {
 })
 
 function on_local_online_switch() {
+	let ctx = 'on_local_online_switch'
 	let los = $('#local-online-switch')
 	
 	if (los.prop('checked')) {
 		local = false
 		$('#local-online').html('online')
 		
-		// create game-over screen
-		$('#game-canvas').hide()
-		$('#center').append($(game_over_template))
-		$('#next-game').click(next_game)
+		// define account
+		load_account()
+		.then(function(res_account) {
+			account = res_account
+		})
+		.catch(() => {
+			// fail silently
+		})
+		.finally(() => {
+			// create game-over screen
+			$('#game-canvas').hide()
+			$('#center').append($(game_over_cmp))
+			$('#next-game').click(next_game)
+			
+			$('#directions')
+			.html('\
+			Switched to online mode; refreshed game to fetch latest available online match.')
 		
-		$('#directions')
-		.html('\
-		Switched to online mode; refreshed game to fetch latest available online match.')
-		
-		cookies_set('local_online_mode','online')
-		
-		if (game != null) {
-			// clear current game
-			let ci = account.current_games.indexOf(game.id)
-			account.current_games.splice(ci,1)
-			game = null
-		}
+			cookies_set('local_online_mode','online')
+			
+			if ($('.history-game').length == 0) {
+				// define old games
+				load_old_games()
+				.then(() => {
+					index_log.debug('old games loaded', ctx)
+				})
+				.catch(() => {
+					index_log.debug('old games load failed', ctx)
+				})
+			}
+		})
 	}
 	else {
 		local = true
@@ -262,6 +159,7 @@ function on_local_online_switch() {
 		cookies_set('local_online_mode','local')
 		
 		if (game != null) {
+			game.local = true
 			game.on_finish = local_game
 		}
 	}
@@ -269,15 +167,51 @@ function on_local_online_switch() {
 	los.prop('checked', !local)
 }
 
+function next_game() {
+	let ctx = 'next_game'
+	
+	if (game != null) {
+		// clear current game
+		game.on_finish = null
+		game.finish()
+		
+		// move current game to pending
+		if (!game.local) {
+			move_to_pending()
+		}
+	}
+	
+	load_current_game()
+	.then(saved_game)
+	.catch(() => {
+		// load next available game
+		load_available_games()
+		.then(function(available_games) {
+			if (available_games.length > 0) {
+				fetch_current_game(available_games[0])
+				.then(saved_game)
+				.catch(() => {
+					index_log.error(`failed to fetch available game ${available_games[0]}`, ctx)
+					$('#directions').html('Failed to fetch next gamefrom server. Try again later.')
+				})
+			}
+			else {
+				// generate new game
+				new_game()
+			}
+		})
+	})
+}
+
 function local_game(game_state) {
 	if (game == undefined) {
-		game = new Game($('#game-canvas'), random_string(), null, 2)
+		game = new Game($('#game-canvas'), random_string(), null, 2, 0, true)
 	}
 	else {
 		let game_state = game.save_state()
 		game.remove()
 	
-		game = new Game($('#game-canvas'), random_string(), game_state)
+		game = new Game($('#game-canvas'), random_string(), game_state, null, null, true)
 	}
 	
 	game.on_finish = local_game
@@ -287,6 +221,9 @@ function local_game(game_state) {
 
 function new_game() {
 	let ctx = 'new_game'
+	
+	// hide game-over screen
+	$('#game-over').remove()
 	
 	// initialize new game
 	game = new Game($('#game-canvas'), account.username, null, 2)
@@ -301,6 +238,9 @@ function new_game() {
 
 function saved_game(game_state) {
 	let ctx = 'saved_game'
+	
+	// hide game-over screen
+	$('#game-over').remove()
 	
 	// initialize new game
 	game = new Game($('#game-canvas'), account.username, game_state)
@@ -364,41 +304,54 @@ function game_stats() {
 	$('#frame-limit').html(game.frame_limit)
 }
 
-function pending_game_stats(game_summary) {
+function pending_game_stats(game) {
+	/*
+	Add a pending game summary to the gui.
+	*/
 	let ctx = 'pending_game_stats'
 	
-	let pending_game = $(pending_game_template)
+	let existing = $(`.pending-game[data-game-id="${game.id}"]`)
 	
-	pending_game.find('.pending-game-id').html(
-		game_summary.id
-	)
+	if (existing.length == 0) {
+		let pending_game = $(pending_game_cmp)
+		.attr('data-game-id', game.id)
 	
-	pending_game.find('.pending-game-usernames').html(
-		game_summary.usernames.join(', ')
-	)
+		pending_game.find('.pending-game-id').html(
+			game.id
+		)
 	
-	pending_game.find('.pending-game-round').html(
-		`${game_summary.scores.length} / ${game_summary.match_limit/2}`
-	)	
+		pending_game.find('.pending-game-usernames').html(
+			game.usernames.join(', ')
+		)
 	
-	let totals = Array(game_summary.num_teams).fill(0)
-	for (let scoreboard of game_summary.scores) {
-		for (let i=0; i<scoreboard.length; i++) {
-			totals[i] += scoreboard[i]
+		pending_game.find('.pending-game-round').html(
+			`${game.scores.length} / ${game.match_limit/2}`
+		)	
+	
+		let totals = Array(game.num_teams).fill(0)
+		for (let scoreboard of game.scores) {
+			for (let i=0; i<scoreboard.length; i++) {
+				totals[i] += scoreboard[i]
+			}
 		}
+	
+		pending_game.find('.pending-game-scores').html(
+			totals.join(', ')
+		)
+	
+		$('#pending-games').append(pending_game)
+		index_log.debug(`added ${game.id} to pending section`, ctx)
 	}
-	
-	pending_game.find('.pending-game-scores').html(
-		totals.join(', ')
-	)
-	
-	$('#pending-games').append(pending_game)
+	else {
+		index_log.debug(`pending ${game.id} already loaded in page`, ctx)
+	}
 }
 
 function old_game_stats(game) {
-	let game_summary = $(game_summary_template)
+	let history_game = $(history_game_cmp)
+	.attr('data-game-id', game.id)
 	
-	game_summary.find('.history-game-id')
+	history_game.find('.history-game-id')
 	.html(game.id)
 	
 	let totals = Array(game.num_teams).fill(0)
@@ -423,39 +376,38 @@ function old_game_stats(game) {
 		winner_username = game.usernames[winner_team]
 	}
 	
-	game_summary.find('.history-game-winner')
+	history_game.find('.history-game-winner')
 	.html(winner_username)
 	
-	game_summary.find('.history-game-usernames')
+	history_game.find('.history-game-usernames')
 	.html(game.usernames.join(', '))
 	
-	game_summary.find('.history-game-num-teams')
+	history_game.find('.history-game-num-teams')
 	.html(game.num_teams)
 	
-	game_summary.find('.history-game-scores')
+	history_game.find('.history-game-scores')
 	.html(totals.join(' '))
 	
-	game_summary.find('.history-game-rounds')
+	history_game.find('.history-game-rounds')
 	.html(game.match_limit/2)
 	
-	game_summary.find('.history-game-frame-limit')
+	history_game.find('.history-game-frame-limit')
 	.html(game.frame_limit)
 	
-	$('#history-games').append(game_summary)
+	$('#history-games').append(history_game)
 }
 
 function load_current_game() {
-	return new Promise(function(resolve,reject) {
-		let ctx = 'load_current_game'
-		
+	let ctx = 'load_current_game'
+	
+	return new Promise(function(resolve,reject) {		
 		if (account.current_games.length == 0) {
 			index_log.info('no current games to play',ctx)
-			resolve(null)
+			reject()
 		}
 		else {
 			let g = 0
 			let game_id = account.current_games[g]
-			let game_state = null
 			
 			function loop() {
 				index_log.info(`fetching game ${game_id} from the server`,ctx)
@@ -464,28 +416,17 @@ function load_current_game() {
 				.then((res_game) => {
 					index_log.debug(`fetched game ${game_id}; loading state`,ctx)
 					
-					if (res_game.usernames.length > res_game.team && 
-						res_game.usernames[res_game.team] == account.username) {
-						index_log.debug(`${game_id} is open for a turn from ${account.username}`,ctx)
-						game_state = res_game
-						return Promise.resolve()
+					return Promise.resolve(res_game)
+				})
+				.catch(function(why) {
+					if (why == 'pending') {
+						index_log.warning(`${game_id} is pending turn from another team`)
+						move_to_pending(game_id)
+						g--
 					}
 					else {
-						index_log.debug(`${game_id} is pending a turn from team ${res_game.team}`,ctx)
-						account.pending_games.push(game_id)
-						
-						g++
-						if (g < account.current_games.length) {
-							game_id = account.current_games[g]
-							return loop()
-						}
-						else {
-							return Promise.resolve()
-						}
+						index_log.warning('failed to fetch chosen game',ctx)
 					}
-				})
-				.catch(() => {
-					index_log.warning('failed to fetch chosen game',ctx)
 					
 					g++
 					if (g < account.current_games.length) {
@@ -493,55 +434,28 @@ function load_current_game() {
 						return loop()
 					}
 					else {
-						return Promise.resolve()
+						return Promise.resolve(null)
 					}
 				})
 			}
 			
-			loop().then(() => {
-				// remove pending games from current games
-				for (let pending of account.pending_games) {
-					let ci = account.current_games.indexOf(pending)
-					
-					if (ci != -1) {
-						index_log.debug(`remove ${pending} from current_games`)
-						account.current_games.splice(ci,1)
-					}
+			loop().then(function(game_state) {
+				if (game_state == null) {
+					reject()
 				}
-				
-				resolve(game_state)
+				else {
+					resolve(game_state)
+				}
 			})
 		}
 	})
 }
 
-function random_string(len) {
-	if (len == undefined) {
-		len = Math.random() * (12-4) + 4
-	}
-	
-	let vowels = 'aeiouy'
-	let consonants = 'bcdfghjklmnpqrstvwxz'
-	
-	let str = []
-	let s = Math.round(Math.random())
-	for (let i=0; i<len; i++) {
-		if (s == 0) {
-			str.push(vowels.charAt(Math.floor(Math.random()*vowels.length)))
-		}
-		else if (s == 1) {
-			str.push(consonants.charAt(Math.floor(Math.random()*consonants.length)))
-		}
-		
-		s = 1-s
-	}
-	
-	return str.join('')
-}
-
 function load_account() {
 	return new Promise(function(resolve,reject) {
 		new Promise(function(resolve) {
+			$('#login-form').show()
+			
 			let username = cookies_get('username')
 			let username_el = $('#username')
 			
@@ -549,12 +463,12 @@ function load_account() {
 				username_el
 				.prop('disabled',false)
 				.prop('placeholder',random_string())
-			
+				
 				$('#directions').html('Pick a username.')
-			
+				
 				$('#login').on('click', (e) => {
 					console.log('login')
-				
+					
 					let username = username_el.val()
 					if (username == '') {
 						username = username_el.prop('placeholder')
@@ -617,34 +531,6 @@ function load_account() {
 	})
 }
 
-function load_current_games() {
-	return new Promise(function(resolve,reject) {
-		$.ajax({
-			dataType: 'json',
-			url: CURR_GAMES_URL,
-			data: {
-				username: account.username
-			},
-			success: function(res) {				
-				if (res.result == 'pass') {
-					index_log.debug(
-						`fetched ${res.games.length} current games from server`,
-						CURR_GAMES_URL
-					)
-					resolve(res.games)
-				}
-				else {
-					reject([])
-				}
-			},
-			error: function(err) {
-				index_log.error('failed to fetch current games from server',CURR_GAMES_URL)
-				reject([])
-			}
-		})
-	})
-}
-
 function load_old_games() {
 	let ctx = 'load_old_games'
 	
@@ -680,6 +566,8 @@ function load_old_games() {
 }
 
 function load_available_games() {
+	let ctx = 'load_available_games'
+	
 	return new Promise(function(resolve) {
 		$.ajax({
 			dataType: 'json',
@@ -690,45 +578,44 @@ function load_available_games() {
 			},
 			success: function(res) {
 				if (res.result == 'pass') {
-					index_log.debug(`fetched ${res.games.length} available games`)
+					index_log.debug(`fetched ${res.games.length} available games`, ctx)
 					resolve(res.games)
 				}
 				else {
-					index_log.error(`failed to fetch available games: ${res.why}`)
+					index_log.error(`failed to fetch available games: ${res.why}`, ctx)
 					resolve([])
 				}
 			},
 			error: function(err) {
-				index_log.error(`failed to fetch available games: ${err.message}`, AVAILABLE_GAMES_URL)
+				index_log.error(`failed to fetch available games: ${err.message}`, ctx)
 				resolve([])
 			}
 		})
 	})
 }
 
-function load_game_summaries(game_ids) {
+function load_game_summary(game_id) {
+	let ctx = 'load_game_summary'
+	
 	return new Promise(function(resolve,reject) {
 		$.ajax({
 			dataType: 'json',
-			url: GAME_SUMMARIES_URL,
+			url: GAME_SUMMARY_URL,
 			data: {
-				games: game_ids
+				game: game_id
 			},
 			success: function(res) {
 				if (res.result == 'pass') {
-					index_log.debug(
-						`fetched ${res.games.length} pending game summaries from server`,
-						CURR_GAMES_URL
-					)
-					resolve(res.games)
+					index_log.debug(`fetched pending game summary ${res.game.id}`,ctx)
+					resolve(res.game)
 				}
 				else {
-					index_log.error(`failed to fetch pending games: ${res.why}`,CURR_GAMES_URL)
+					index_log.error(`failed to fetch pending games: ${res.why}`,ctx)
 					reject()
 				}
 			},
 			error: function(err) {
-				index_log.error(`failed to fetch pending games: ${err.message}`,CURR_GAMES_URL)
+				index_log.error(`failed to fetch pending games: ${err.message}`,ctx)
 				reject()
 			}
 		})
@@ -736,6 +623,8 @@ function load_game_summaries(game_ids) {
 }
 
 function fetch_current_game(game_id) {
+	let ctx = 'fetch_current_game'
+	
 	return new Promise(function(resolve,reject) {
 		$.ajax({
 			dataType: 'json',
@@ -745,17 +634,23 @@ function fetch_current_game(game_id) {
 			},
 			success: function(res) {
 				if (res.result == 'pass') {
-					index_log.debug(`game load ${game_id} passed`)
-					resolve(res.game)
+					index_log.debug(`game ${game_id} loaded; checking if ready or pending`, ctx)
+					
+					if (is_pending(res.game)) {
+						reject('pending')
+					}
+					else {
+						resolve(res.game)
+					}
 				}
 				else {
-					index_log.error(`failed to fetch game ${game_id}: ${res.why}`)
-					reject()
+					index_log.error(`failed to fetch game ${game_id}: ${res.why}`, ctx)
+					reject('no game')
 				}
 			},
 			error: function(err) {
-				index_log.error(`failed to fetch game ${game_id}: ${err.message}`, CURR_GAME_URL)
-				reject()
+				index_log.error(`failed to fetch game ${game_id}: ${err.message}`, ctx)
+				reject('no game')
 			}
 		})
 	})
@@ -832,46 +727,89 @@ function on_game_finish(game) {
 	})
 	
 	// create game-over screen
-	$('#center').append($(game_over_template))
+	$('#center').append($(game_over_cmp))
 	$('#next-game').click(next_game)
 }
 
-function next_game() {
-	let ctx = 'next_game'
+function is_pending(game) {
+	/*
+	Return true if teams are assigned and current team is not account.username (waiting for 
+	someone else's turn).
 	
-	if (account.current_games.length > 0) {
-		// load next current game
-		fetch_current_game(account.current_games[0])
-		.then(function(game_state) {
-			saved_game(game_state)
-			$('#game-over').remove()
-		})
+	Side-effects: if pending, the game is removed from account.current_games and 
+	account_available_games.
+	*/
+	let ctx = 'is_pending'
+	let pending = false
+	
+	if (game.usernames.length == game.num_teams) {
+		// is full
+		pending = (game.usernames[game.team] != account.username)
+	}
+	else {
+		// waiting for more players
+		pending = (game.usernames.indexOf(account.username) != -1)
+	}
+	
+	if (pending) {
+		index_log.debug(`${game.id} is pending turn from ${game.usernames[game.team]}`,ctx)
+	}
+	
+	return pending
+}
+
+function move_to_pending(game_id) {
+	let ctx = 'move_to_pending'
+	
+	// load pending game into section
+	if (game_id != undefined) {
+		// use game id to load game summary
+		load_game_summary(game_id)
+		.then(pending_game_stats)
 		.catch(() => {
-			index_log.error(`failed to fetch current game ${account.current_games[0]}`, ctx)
-			
-			$('#directions').html('Failed to fetch your next game from server. Try again later.')
+			index_log.error(`failed to load pending game ${game_id}`, ctx)
 		})
 	}
 	else {
-		// load next available game
-		load_available_games()
-		.then(function(available_games) {
-			if (available_games.length > 0) {
-				fetch_current_game(available_games[0])
-				.then(function(game_state) {
-					saved_game(game_state)
-					$('#game-over').remove()
-				})
-				.catch(() => {
-					index_log.error(`failed to fetch available game ${available_games[0]}`, ctx)
-					$('#directions').html('Failed to fetch next gamefrom server. Try again later.')
-				})
-			}
-			else {
-				// generate new game
-				new_game()
-				$('#game-over').remove()
-			}
-		})
+		// use last game
+		pending_game_stats(game)
 	}
+	
+	// remove pending game from current games
+	let ci = account.current_games.indexOf(game_id)
+	if (ci != -1) {
+		index_log.debug(`remove ${game_id} from current_games`, ctx)
+		account.current_games.splice(ci,1)
+	}
+	
+	// add to account.pending_games
+	let pi = account.pending_games.indexOf(game_id)
+	if (ci == -1) {
+		index_log.debug(`add ${game_id} to pending_games`, ctx)
+		account.pending_games.push(game_id)
+	}
+}
+
+function random_string(len) {
+	if (len == undefined) {
+		len = Math.random() * (12-4) + 4
+	}
+	
+	let vowels = 'aeiouy'
+	let consonants = 'bcdfghjklmnpqrstvwxz'
+	
+	let str = []
+	let s = Math.round(Math.random())
+	for (let i=0; i<len; i++) {
+		if (s == 0) {
+			str.push(vowels.charAt(Math.floor(Math.random()*vowels.length)))
+		}
+		else if (s == 1) {
+			str.push(consonants.charAt(Math.floor(Math.random()*consonants.length)))
+		}
+		
+		s = 1-s
+	}
+	
+	return str.join('')
 }

@@ -31,13 +31,73 @@ class Logger {
 		}
 	}
 	
-	constructor(name, level=Logger.LEVEL_DEBUG) {
+	static set_root(new_root) {
+		if (Logger.root != undefined) {
+			// move current root children to new root
+			new_root.children = new_root.children.concat(Logger.root.children)
+		}
+		
+		for (let c=new_root.children.length-1; c>=0; c--) {
+			if (new_root.children[c] == new_root) {
+				new_root.children.splice(c,1)
+			}
+		}
+		
+		// set new_root.children.level
+		new_root.set_level(new_root.level)
+		
+		// assign new_root to root reference
+		Logger.root = new_root
+	}
+	
+	static get_caller_line() {
+		try {
+			throw new Error('')
+		}
+		catch (err) {
+			let caller_info = err.stack.split('\n')[4].split(':')
+			
+			// line number is second to last item in colon-separated list
+			let line = caller_info[caller_info.length-2]
+			return line
+		}
+	}
+	
+	constructor(name, level) {
 		/*
 		Logger constructor.
 		*/
 		
 		this.name = name
+		
+		// reference to sub-loggers
+		this.children = []
+		
+		// add as child to root logger
+		if (Logger.root != undefined) {
+			Logger.root.children.push(this)
+			
+			if (level != undefined) {
+				this.level = level
+			}
+			else {
+				this.level = Logger.root.level
+			}
+		}
+		else if (level != undefined) {
+			this.level = level
+		}
+		else {
+			this.level = Logger.LEVEL_INFO
+		}
+	}
+	
+	set_level(level) {
 		this.level = level
+		
+		for (let child of this.children) {
+			child.set_level(level)
+		}
 	}
 	
 	log(message, level=Logger.LEVEL_DEBUG, context='main') {
@@ -46,7 +106,9 @@ class Logger {
 				message = JSON.stringify(message)
 			}
 			
-			console.log(`${this.name}.${context}.${Logger.level_name(level)}: ${message}`)
+			let line = Logger.get_caller_line()
+			
+			console.log(`${this.name}.${context}.${line}.${Logger.level_name(level)}: ${message}`)
 		}
 	}
 	
@@ -84,6 +146,9 @@ Logger.LEVEL_INFO = 1
 Logger.LEVEL_WARNING = 2
 Logger.LEVEL_ERROR = 3
 Logger.LEVEL_CRITICAL = 4
+
+// create root logger
+Logger.root = new Logger('root', Logger.LEVEL_DEBUG)
 
 if (typeof exports != 'undefined') {
 	exports.Logger = Logger
