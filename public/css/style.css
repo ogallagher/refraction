@@ -1,0 +1,18 @@
+/*
+Owen Gallagher
+3 Dec 2020
+*/
+
+.bg-secondary-hover:hover {
+	background-color: #ddd;
+}
+
+.current-game.selectable:hover, 
+.history-game.selectable:hover {
+	background-color: #ddd;
+}
+
+.current-game.selectable, 
+.history-game.selectable {
+	cursor: pointer;
+}

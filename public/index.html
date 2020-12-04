@@ -26,6 +26,7 @@
 		<!-- js components -->
 		<script src="components/history_game_cmp.js"></script>
 		<script src="components/pending_game_cmp.js"></script>
+		<script src="components/current_game_cmp.js"></script>
 		<script src="components/game_over_cmp.js"></script>
         
         <!-- js internal -->
@@ -98,7 +99,16 @@
 			</div>
 			<div id="right" class="col-lg py-2 px-1">
 				<div class="row p-3">
-					<div id="pending" class="col-6 col-lg-12">
+					<div id="current" class="col col-lg-12">
+						<div class="text-left h3">
+							current
+						</div>
+						<div class="text-right">
+							<div id="current-games" class="m-1">
+							</div>
+						</div>
+					</div>
+					<div id="pending" class="col col-lg-12">
 						<div class="text-left h3">
 							pending
 						</div>
@@ -107,7 +117,7 @@
 							</div>
 						</div>
 					</div>
-					<div id="history" class="col-6 col-lg-12">
+					<div id="history" class="col col-lg-12">
 						<div class="text-left h3">
 							history
 						</div>

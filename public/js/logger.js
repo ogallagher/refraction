@@ -55,10 +55,18 @@ class Logger {
 			throw new Error('')
 		}
 		catch (err) {
-			let caller_info = err.stack.split('\n')[4].split(':')
+			let call_stack = err.stack.split('\n')
+			let caller_info = call_stack[4]
+			
+			if (caller_info.indexOf(':') == -1) {
+				caller_info = call_stack[3]
+			}
+			
+			caller_info = caller_info.split(':')
 			
 			// line number is second to last item in colon-separated list
 			let line = caller_info[caller_info.length-2]
+			
 			return line
 		}
 	}

@@ -343,9 +343,9 @@ server.route('/update_game')
 	}
 })
 
-server.route('/available_games')
+server.route('/available_game')
 .get(function(req,res) {
-	let ctx = 'available_games'
+	let ctx = 'available_game'
 	let excludes = req.query.excludes
 	if (excludes == undefined) {
 		excludes = []
@@ -354,53 +354,66 @@ server.route('/available_games')
 	
 	let result = {
 		result: null,
-		action: 'available_games',
-		games: []
+		action: 'available_game',
+		game: null
 	}
 	
 	// get list of game ids
 	fs.promises.readdir(CURR_GAMES_DIR_PATH)
-	.then((files) => {
-		let promises = []
-		
-		function check_available(f) {
-			return new Promise(function(resolve) {
-				let game_id = f.replace('.json','')
-				
-				if (excludes.indexOf(game_id) == -1) {
-					fs.promises.readFile(`${CURR_GAMES_DIR_PATH}/${f}`)
-					.then((game_str) => {
-						let game = JSON.parse(game_str)
-						
-						if (game.usernames.length < game.num_teams && 
-							game.usernames.indexOf(username) == -1) {
-							result.games.push(game_id)
-							log.debug(`${game_id} is available`,ctx)
-						}
-						else {
-							log.debug(`${game_id} is full`,ctx)
-						}
-					})
-					.catch((err) => {
-						log.error(`failed to read available game ${game_id}`,ctx)
-					})
-					.finally(() => {
-						resolve()
-					})
+	.then(function(files) {		
+		function check_available(f, i) {
+			return new Promise(function(resolve, reject) {
+				if (i < f.length) {
+					let file = f[i]
+					let game_id = file.replace('.json','')
+					
+					if (excludes.indexOf(game_id) == -1) {
+						fs.promises.readFile(`${CURR_GAMES_DIR_PATH}/${file}`)
+						.then(function(game_str) {
+							let game = JSON.parse(game_str)
+							
+							if (game.usernames.length < game.num_teams && 
+								game.usernames.indexOf(username) == -1) {
+								log.debug(`${game.id} is available for ${username}`,ctx)
+								
+								result.game = game
+								resolve()
+							}
+							else {
+								check_available(f, i+1)
+								.then(resolve)
+								.catch(reject)
+							}
+						})
+						.catch(function(err) {
+							console.log(err)
+							check_available(f, i+1)
+							.then(resolve)
+							.catch(reject)
+						})
+					}
+					else {
+						check_available(f, i+1)
+						.then(resolve)
+						.catch(reject)
+					}
 				}
 				else {
-					resolve()
+					log.debug(`no available games found`)
+					reject()
 				}
 			})
 		}
 		
-		for (let file of files) {
-			promises.push(check_available(file))
-		}
+		log.info('checking available games')
 		
-		return Promise.allSettled(promises).then(() => {
-			log.debug(`found ${result.games.length} available games for ${username}`,ctx)
+		return check_available(files, 0)
+		.then(() => {
 			result.result = 'pass'
+		})
+		.catch(() => {
+			result.result = 'fail'
+			result.why = 'none available'
 		})
 	})
 	.catch((err) => {
@@ -426,7 +439,7 @@ server.route('/game_summary')
 		})
 	})
 	.catch(() => {
-		log.error(`failed to fetch summary for ${game_id}`, ctx)
+		log.error(`failed to fetch summary for ${res.query.game}`, ctx)
 		res.json({
 			result: 'fail',
 			why: 'no summary',
