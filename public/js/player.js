@@ -62,10 +62,17 @@ class Player {
 				Math.random() + 0.25)
 		}
 		
-		this.deleted = false
-		this.radius = 10
-		this.gun_radius = this.radius*1.5
-		this.speed = 2
+		this.deleted = false				// whether player has died
+		this.radius = 10					// body (hitbox) radius
+		this.gun_radius = this.radius*1.5	// length of gun from player position
+		this.speed = 2						// walking speed
+		
+		this.prev_shot = 0					// frame number (state_i) of last shot
+		this.ammo_capacity = 15				// total shots per match
+		this.clip_capacity = 3				// total ammo is divided into clips to limit shot rate
+		this.clip_recharge_speed = 0.01		// proportion of clip recharged in one frame
+		this.ammo = this.ammo_capacity		// current remaining shots in current match
+		this.clip = 1.0		// current fraction of remaining shots in clip
 		
 		this.position = new paper.Point(init.position)
 		this.velocity = new paper.Point(init.velocity)
@@ -109,6 +116,18 @@ class Player {
 			strokeCap: 'round'
 		})
 		
+		this.shot_indicator_length = 100
+		this.shot_indicator = new paper.Path({
+			segments: [
+				[0,0], [this.shot_indicator_length,0]
+			],
+			strokeColor: this.color,
+			strokeWidth: 6,
+			strokeCap: 'round',
+			position: [paper.view.center.x,10],
+			visible: !this.is_ghost
+		})
+		
 		this.graphic = new paper.Group({
 			children: [
 				gun,
@@ -146,8 +165,31 @@ class Player {
 	}
 	
 	mouse_down(event) {
-		this.shot = true
-		this.state_changed = true
+		let shot_enabled = true
+		
+		// check ammo
+		if (this.ammo <= 0) {
+			shot_enabled = false
+		}
+		// check clip
+		else if (this.clip * this.clip_capacity < 1) {
+			shot_enabled = false
+		}
+		
+		// attempt shot
+		if (shot_enabled) {
+			// deplete clip and ammo
+			this.ammo -= 1
+			this.clip -= (1/this.clip_capacity)
+			if (this.clip < 0) {
+				this.clip = 0
+			}
+			
+			this.shot = true
+			this.state_changed = true
+			
+			player_log.debug(`shot status: clip=${this.clip} ammo=${this.ammo/this.ammo_capacity}`)
+		}
 	}
 	
 	key_down(event) {
@@ -290,12 +332,17 @@ class Player {
 	}
 	
 	move_graphic() {
+		// update graphics
 		this.graphic.position = this.position
 		this.graphic.rotation = this.heading_v
 		
 		if (this.result == Game.RESULT_LOSS) {
 			this.body.fillColor.alpha = 0.5
 		}
+		
+		this.shot_indicator.lastSegment.point.x = 
+			this.shot_indicator.position.x + 
+			this.clip * (this.ammo/this.ammo_capacity) * this.shot_indicator_length
 	}
 	
 	shoot() {
@@ -309,6 +356,12 @@ class Player {
 	}
 	
 	update() {
+		// recharge clip
+		this.clip += this.clip_recharge_speed // fraction of shots in clip
+		if (this.clip > 1) {
+			this.clip = 1
+		}
+		
 		if (this.state_i > this.frame_limit) {
 			this.result = Game.RESULT_LOSS
 			this.state_changed = true
@@ -383,6 +436,7 @@ class Player {
 	
 	remove() {
 		this.graphic.remove()
+		this.shot_indicator.remove()
 	}
 }
 
