@@ -47,7 +47,9 @@ class Game {
 		
 		if (state == undefined) {
 			// new game
-			this.id = uuidv4()
+			let uuidn = generate_uuid_nickname()
+			this.id = uuidn.uuid
+			this.nickname = uuidn.nickname
 			this.frame_limit = Game.DEFAULT_FRAME_LIMIT
 			this.team = team
 			this.num_teams = num_teams
@@ -73,6 +75,13 @@ class Game {
 			
 			game_log.debug(`loading saved game id=${state.id} frames=${state.frame_limit} obstacles=${state.obstacles.length}`, ctx)
 			this.id = state.id
+			
+			this.nickname = state.nickname
+			// backwards compat
+			if (this.nickname == undefined) {
+				this.nickname = generate_uuid_nickname().nickname
+			}
+			
 			this.frame_limit = state.frame_limit
 			this.team = state.team
 			this.num_teams = state.num_teams
@@ -631,6 +640,7 @@ class Game {
 	save_state() {
 		let state = {
 			id: this.id,
+			nickname: this.nickname,
 			frame_limit: this.frame_limit,
 			num_teams: this.num_teams,
 			usernames: this.usernames,

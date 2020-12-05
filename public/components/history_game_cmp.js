@@ -1,6 +1,10 @@
 let history_game_cmp = `
 <div class="border-top history-game px-2 py-1" data-game-id="">
 	<div class="row">
+		<div class="col text-secondary">game nickname</div>
+		<div class="history-game-nickname col"></div>
+	</div>
+	<div class="row">
 		<div class="col text-secondary">game id</div>
 		<div class="history-game-id col"></div>
 	</div>

@@ -50,6 +50,13 @@ $(document).ready(function() {
 	.change(on_local_online_switch)
 	
 	if (editing) {
+		// tests
+		index_log.debug(
+			'random uuid and nickname: ' + 
+			JSON.stringify(generate_uuid_nickname()), 
+			ctx
+		)
+		
 		// example current games
 		let current_game = $(current_game_cmp)
 		let current_games = $('#current-games')
@@ -452,6 +459,7 @@ function find_game() {
 
 function game_stats() {
 	$('#game-id').html(game.id)
+	$('#game-nickname').html(game.nickname)
 	
 	let teams = []
 	
@@ -508,6 +516,8 @@ function current_game_stats(game) {
 	let current_game = $(current_game_cmp)
 	.attr('data-game-id', game.id)
 	
+	current_game.find('.current-game-nickname').html(game.nickname)
+	
 	current_game.find('.current-game-id').html(game.id)
 	
 	current_game.find('.current-game-usernames').html(game.usernames.join(', '))
@@ -540,14 +550,12 @@ function pending_game_stats(game) {
 	if (existing.length == 0) {
 		let pending_game = $(pending_game_cmp)
 		.attr('data-game-id', game.id)
+		
+		pending_game.find('.pending-game-nickname').html(game.nickname)
 	
-		pending_game.find('.pending-game-id').html(
-			game.id
-		)
+		pending_game.find('.pending-game-id').html(game.id)
 	
-		pending_game.find('.pending-game-usernames').html(
-			game.usernames.join(', ')
-		)
+		pending_game.find('.pending-game-usernames').html(game.usernames.join(', '))
 	
 		pending_game.find('.pending-game-round').html(
 			`${game.scores.length} / ${game.match_limit}`
@@ -576,6 +584,8 @@ function old_game_stats(game) {
 	let ctx = 'old_game_stats'
 	let history_game = $(history_game_cmp)
 	.attr('data-game-id', game.id)
+	
+	history_game.find('.history-game-nickname').html(game.nickname)
 	
 	history_game.find('.history-game-id')
 	.html(game.id)

@@ -1,6 +1,10 @@
 let current_game_cmp = `
 <div class="border-top current-game py-2 px-4" data-game-id="">
 	<div class="row">
+		<div class="col text-secondary">game name</div>
+		<div class="current-game-nickname col"></div>
+	</div>
+	<div class="row">
 		<div class="col text-secondary">game id</div>
 		<div class="current-game-id col"></div>
 	</div>
