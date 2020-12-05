@@ -22,7 +22,7 @@ let account = {
 let ACCOUNT_URL = '/account'
 let LOGIN_URL = `${ACCOUNT_URL}/login`
 let OLD_GAMES_URL = `${ACCOUNT_URL}/old_games`
-let CURR_GAME_URL = '/current_game'
+let GAME_URL = '/game'
 let UPDATE_GAME_URL = '/update_game'
 let AVAILABLE_GAME_URL = '/available_game'
 let GAME_SUMMARY_URL = '/game_summary'
@@ -216,6 +216,9 @@ function on_local_online_switch() {
 		local = false
 		$('#local-online').html('online')
 		
+		// remove game over (local/online) before adding it back with next_game
+		$('#game-over').remove()
+		
 		// define account
 		login()
 		.then(function(username) {
@@ -223,7 +226,7 @@ function on_local_online_switch() {
 			
 			// move to next game, which also refreshes account data
 			on_game_finish()
-		
+			
 			$('#directions')
 			.html('\
 			Switched to online mode; refresh games to fetch latest available online match.')
@@ -235,6 +238,7 @@ function on_local_online_switch() {
 		local = true
 		$('#local-online').html('local')
 		
+		// show local game over
 		$('#game-over').remove()
 		$('#game-canvas').show()
 		$('#center').append($(game_over_local_cmp))
@@ -322,7 +326,7 @@ function enable_game_selection() {
 	.click(function() {
 		let game_id = this.dataset.gameId
 		
-		fetch_current_game(game_id)
+		fetch_game(game_id, true)
 		.then(function(game_state) {
 			if (game != null) {
 				game.finish()
@@ -330,6 +334,8 @@ function enable_game_selection() {
 			
 			saved_game(game_state)
 			$('#directions').html(`selected ${game_id}`)
+			
+			$('#game-canvas')[0].scrollIntoView()
 		})
 		.catch((err) => {
 			index_log.error(`failed to load ${game_id}`)
@@ -344,8 +350,26 @@ function enable_game_selection() {
 	.addClass('selectable')
 	.click(function(e) {
 		let game_id = this.dataset.gameId
-		index_log.warning('playback mode for old games not yet enabled')
-		$('#directions').html(`selected ${game_id} for playback`)
+		
+		fetch_game(game_id, false)
+		.then(function(game_state) {
+			if (game != null) {
+				game.finish()
+			}
+			
+			saved_game(game_state)
+			$('#directions').html(`selected ${game_id} for playback`)
+			
+			$('#game-canvas')[0].scrollIntoView()
+		})
+		.catch(function(err) {
+			index_log.error(`failed to load ${game_id}`)
+			
+			if (err) {
+				console.log(err)
+			}
+		})
+		
 	})
 }
 
@@ -396,15 +420,21 @@ function saved_game(game_state) {
 	
 	// initialize new game
 	game = new Game($('#game-canvas'), account.username, game_state)
-	game.on_finish = on_game_finish
 	game_stats()
 	
-	// ensure saved game is in account.current_games
-	if (account.current_games.indexOf(game.id) == -1) {
-		account.current_games.push(game.id)
+	if (!game.old) {
+		game.on_finish = on_game_finish
+		
+		// ensure saved game is in account.current_games
+		if (account.current_games.indexOf(game.id) == -1) {
+			account.current_games.push(game.id)
+		}
+		
+		index_log.info(`began match ${game.scores.length+1} for saved game ${game.id}`, ctx)
 	}
-	
-	index_log.info(`began match ${game.scores.length+1} for saved game ${game.id}`, ctx)
+	else {
+		index_log.info(`began playback of old game ${game.id}`, ctx)
+	}
 }
 
 function find_game() {
@@ -594,56 +624,6 @@ function old_game_stats(game) {
 	index_log.debug(`added ${game.id} to history games`, ctx)
 }
 
-/*
-function load_current_game() {
-	let ctx = 'load_current_game'
-	
-	return new Promise(function(resolve,reject) {		
-		let g = 0
-		let game_id = account.current_games[g]
-		
-		function loop() {
-			index_log.info(`fetching game ${game_id} from the server`,ctx)
-			
-			return fetch_current_game(game_id)
-			.then(function(res_game) {
-				index_log.debug(`fetched game ${game_id}; loading state`,ctx)
-				
-				return Promise.resolve(res_game)
-			})
-			.catch(function(res_game) {
-				if (res_game != undefined) {
-					index_log.warning(`${game_id} is pending turn from another team`)
-					move_to_pending(res_game)
-					g--
-				}
-				else {
-					index_log.warning('failed to fetch chosen game',ctx)
-				}
-				
-				g++
-				if (g < account.current_games.length) {
-					game_id = account.current_games[g]
-					return loop()
-				}
-				else {
-					return Promise.resolve(null)
-				}
-			})
-		}
-		
-		loop().then(function(game_state) {
-			if (game_state == null) {
-				reject()
-			}
-			else {
-				resolve(game_state)
-			}
-		})
-	})
-}
-*/
-
 function load_old_games() {
 	let ctx = 'load_old_games'
 	
@@ -771,21 +751,22 @@ function fetch_game_summary(game_id) {
 	})
 }
 
-function fetch_current_game(game_id) {
-	let ctx = 'fetch_current_game'
+function fetch_game(game_id, current=true) {
+	let ctx = 'fetch_game'
 	
 	return new Promise(function(resolve,reject) {
 		$.ajax({
 			dataType: 'json',
-			url: CURR_GAME_URL,
+			url: GAME_URL,
 			data: {
-				game_id: game_id
+				game_id: game_id,
+				current: current
 			},
 			success: function(res) {
 				if (res.result == 'pass') {
-					index_log.debug(`game ${game_id} loaded; checking if ready or pending`, ctx)
+					index_log.debug(`game ${game_id} fetched`, ctx)
 					
-					if (is_pending(res.game)) {
+					if (current && is_pending(res.game)) {
 						reject(res.game)
 					}
 					else {

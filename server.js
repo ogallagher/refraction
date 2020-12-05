@@ -191,7 +191,7 @@ server.route('/account/old_games')
 		
 		for (let game_id of game_ids) {
 			promises.push(
-				game_summary(game_id)
+				game_summary(game_id, false)
 				.then(function(summary) {
 					result.games.push(summary)
 				})
@@ -216,23 +216,30 @@ server.route('/account/old_games')
 	})
 })
 
-server.route('/current_game')
+server.route('/game')
 .get(function(req,res) {
 	let ctx = 'game'
 	let game_id = req.query.game_id
+	let current = req.query.current
 	
 	// get full game state for given game id
-	let game_f = `${CURR_GAMES_DIR_PATH}/${game_id}.json`
+	let game_f
+	if (current === true || current === 'true') {
+		game_f = `${CURR_GAMES_DIR_PATH}/${game_id}.json`
+	}
+	else {
+		game_f = `${OLD_GAMES_DIR_PATH}/${game_id}.json`
+	}
 	
 	let result = {
 		result: null,
-		action: 'fetch_current_game',
+		action: 'fetch_game',
 		game: null
 	}
 	
 	fs.readFile(game_f, function(err, game_str) {
 		if (err) {
-			log.error(`failed to load current game ${game_id}: ${err.message}`,ctx)
+			log.error(`failed to load ${current} game ${game_id}: ${err.message}`,ctx)
 			result.result = 'fail'
 			result.why = 'not found'
 		}
