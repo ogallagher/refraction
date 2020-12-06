@@ -52,7 +52,7 @@ $(document).ready(function() {
 	.prop('checked', !local)
 	.change(on_local_online_switch)
 	
-	// bind game config inputs with labels
+	// bind game config inputs with labels and enable
 	$('#config-num-teams').change(function(e) {
 		$('#config-num-teams-out').html(e.target.value)
 	})
@@ -543,17 +543,54 @@ function game_stats() {
 }
 
 function game_config() {
-	if (local || game.ghosts.length == 0) {
-		$('#config-num-teams').val(2).change()
-		$('#config-match-limit').val(Game.DEFAULT_MATCH_LIMIT).change()
-		$('#config-frame-limit').val(Game.DEFAULT_FRAME_LIMIT).change()
-		$('#config-player-radius').val(10).change()
-		$('#config-player-speed').val(10).change()
-		$('#config-bullet-length').val(50).change()
+	if (game.ghosts.length == 0) {
+		// reset to defaults as customizable
+		$('#config-num-teams')
+		.val(Game.DEFAULT_NUM_TEAMS)
+		.change()
+		.change(function(e) {
+			game.set_num_teams(parseInt(e.target.value))
+		})
+		
+		$('#config-match-limit')
+		.val(Game.DEFAULT_MATCH_LIMIT)
+		.change()
+		.change(function(e) {
+			game.match_limit = parseInt(e.target.value)
+		})
+		
+		$('#config-frame-limit')
+		.val(Game.DEFAULT_FRAME_LIMIT)
+		.change()
+		.change(function(e) {
+			game.set_frame_limit(parseInt(e.target.value))
+		})
+		
+		$('#config-player-radius')
+		.val(Player.DEFAULT_RADIUS)
+		.change()
+		.change(function(e) {
+			game.set_player_radius(parseInt(e.target.value))
+		})
+		
+		$('#config-player-speed')
+		.val(Player.DEFAULT_SPEED)
+		.change()
+		.change(function(e) {
+			game.set_player_speed(parseFloat(e.target.value))
+		})
+		
+		$('#config-bullet-length')
+		.val(Bullet.DEFAULT_LENGTH)
+		.change()
+		.change(function(e) {
+			game.set_bullet_length(parseInt(e.target.value))
+		})
 		
 		$('#config-body input').prop('disabled',false)
 	}
 	else {
+		// set to game settings as final
 		$('#config-num-teams').val(game.num_teams).change()
 		$('#config-match-limit').val(game.match_limit).change()
 		$('#config-frame-limit').val(game.frame_limit).change()

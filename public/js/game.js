@@ -12,7 +12,7 @@ class Game {
 	Game class.
 	*/
 	
-	constructor(canvas_el, username, state, num_teams=2, team=0, local=false) {
+	constructor(canvas_el, username, state, num_teams=Game.DEFAULT_NUM_TEAMS, team=0, local=false) {
 		/*
 		Game constructor
 		
@@ -57,6 +57,9 @@ class Game {
 			this.match_limit = Game.DEFAULT_MATCH_LIMIT
 			this.end_result = Game.RESULT_UNKNOWN
 			
+			this.player_radius = Player.DEFAULT_RADIUS
+			this.player_speed = Player.DEFAULT_SPEED
+			
 			this.usernames = [this.username]
 			
 			this.load_obstacles()
@@ -77,8 +80,8 @@ class Game {
 			this.id = state.id
 			
 			this.nickname = state.nickname
-			// backwards compat
-			if (this.nickname == undefined) {
+			
+			if (this.nickname == undefined) { // check for backwards compat
 				this.nickname = generate_uuid_nickname().nickname
 			}
 			
@@ -88,6 +91,10 @@ class Game {
 			this.scores = state.scores
 			this.match_limit = state.match_limit
 			this.end_result = state.end_result
+			
+			this.player_radius = state.player_radius
+			this.player_speed = state.player_speed
+			this.bullet_length = state.bullet_length			
 			
 			this.usernames = state.usernames
 			
@@ -255,6 +262,9 @@ class Game {
 			}
 			else if (self.paused) {
 				self.paused = false
+				
+				// disable any further game settings modification
+				$('#config-body input').prop('disabled',true)
 			}
 			else {
 				self.player.mouse_down(event)
@@ -280,6 +290,44 @@ class Game {
 				// game_log.debug('key up = ' + event.key, 'Game.onKeyUp')
 				self.player.key_up(event)
 			}
+		}
+	}
+	
+	set_num_teams(num_teams) {
+		if (!this.old) {
+			this.num_teams = num_teams
+		
+			this.load_bases()
+			this.clip_obstacles()
+		}
+	}
+	
+	set_frame_limit(frame_limit) {
+		if (!this.old) {
+			this.frame_limit = frame_limit
+			this.player.frame_limit = frame_limit
+			
+			$('#frame-limit').html(game.frame_limit)
+		}
+	}
+	
+	set_player_radius(player_radius) {
+		if (!this.old) {
+			this.player_radius = player_radius
+			this.player.set_radius(player_radius)
+		}
+	}
+	
+	set_player_speed(player_speed) {
+		if (!this.old) {
+			this.player_speed = player_speed
+			this.player.set_speed(player_speed)
+		}
+	}
+	
+	set_bullet_length(bullet_length) {
+		if (!this.old) {
+			this.bullet_length = bullet_length
 		}
 	}
 	
@@ -581,6 +629,12 @@ class Game {
 	load_bases() {
 		paper = this.paper
 		
+		if (this.bases) {
+			for (let base of this.bases) {
+				base.remove()
+			}
+		}
+		
 		this.bases = []
 		
 		// generate bases
@@ -643,6 +697,9 @@ class Game {
 			nickname: this.nickname,
 			frame_limit: this.frame_limit,
 			num_teams: this.num_teams,
+			player_radius: this.player_radius,
+			player_speed: this.player_speed,
+			bullet_length: this.bullet_length,
 			usernames: this.usernames,
 			team: this.other_team(),
 			obstacles: [],
@@ -752,5 +809,6 @@ Game.RESULT_WIN = 1
 Game.RESULT_LOSS = 2
 Game.RESULT_TIE = 3
 
+Game.DEFAULT_NUM_TEAMS = 2
 Game.DEFAULT_FRAME_LIMIT = 1000
 Game.DEFAULT_MATCH_LIMIT = 8 // 4 per team if 2 teams, 2 per team if 4 teams

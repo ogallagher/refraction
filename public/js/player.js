@@ -62,17 +62,17 @@ class Player {
 				Math.random() + 0.25)
 		}
 		
-		this.deleted = false				// whether player has died
-		this.radius = 10					// body (hitbox) radius
-		this.gun_radius = this.radius*1.5	// length of gun from player position
-		this.speed = 2						// walking speed
+		this.deleted = false // whether player has died
+		this.radius = this.game.player_radius || Player.DEFAULT_RADIUS // body (hitbox) radius
+		this.gun_radius = this.radius*1.5 // length of gun from player position
+		this.speed = this.game.player_speed || Player.DEFAULT_SPEED	// walking speed
 		
 		this.prev_shot = 0					// frame number (state_i) of last shot
 		this.ammo_capacity = 15				// total shots per match
 		this.clip_capacity = 3				// total ammo is divided into clips to limit shot rate
 		this.clip_recharge_speed = 0.01		// proportion of clip recharged in one frame
 		this.ammo = this.ammo_capacity		// current remaining shots in current match
-		this.clip = 1.0		// current fraction of remaining shots in clip
+		this.clip = 1.0						// current fraction of remaining shots in clip
 		
 		this.position = new paper.Point(init.position)
 		this.velocity = new paper.Point(init.velocity)
@@ -101,7 +101,23 @@ class Player {
 		
 		this.result = Game.RESULT_UNKNOWN
 		
-		// graphics
+		this.set_graphic()
+	}
+	
+	set_graphic() {
+		let ctx = 'set_graphic'
+		let paper = this.game.paper
+		
+		if (this.graphic) {
+			this.graphic.remove()
+			this.graphic = null
+		}
+		
+		if (this.shot_indicator) {
+			this.shot_indicator.remove()
+			this.shot_indicator = null
+		}
+		
 		let body = new paper.Path.Circle({
 			center: [0,0],
 			radius: this.radius,
@@ -115,6 +131,7 @@ class Player {
 			strokeWidth: 2,
 			strokeCap: 'round'
 		})
+		this.gun = gun
 		
 		this.shot_indicator_length = 100
 		this.shot_indicator = new paper.Path({
@@ -157,6 +174,16 @@ class Player {
 		
 		this.graphic.position = this.position
 		this.graphic.pivot = body.position
+	}
+	
+	set_radius(radius) {
+		this.radius = radius
+		
+		this.set_graphic()
+	}
+	
+	set_speed(speed) {
+		this.speed = speed
 	}
 	
 	mouse_move(event) {
@@ -440,4 +467,6 @@ class Player {
 	}
 }
 
+Player.DEFAULT_RADIUS = 10
+Player.DEFAULT_SPEED = 2
 Player.MAX_COLLISIONS_PER_OBSTACLE = 3

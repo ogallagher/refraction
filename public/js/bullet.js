@@ -27,8 +27,8 @@ class Bullet {
 		
 		// config
 		this.radius = 5
-		this.length = Bullet.DEFAULT_LENGTH
-		this.speed = 10
+		this.length = this.game.bullet_length || Bullet.DEFAULT_LENGTH
+		this.speed = Bullet.DEFAULT_SPEED
 		this.deleted = false
 		
 		// state
@@ -120,3 +120,4 @@ class Bullet {
 }
 
 Bullet.DEFAULT_LENGTH = 50
+Bullet.DEFAULT_SPEED = 10
