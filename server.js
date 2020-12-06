@@ -16,6 +16,10 @@ const bodyparser = require('body-parser')
 const Logger = require('./public/js/logger.js').Logger
 const uuidn = require('./public/js/uuid_nickname.js')
 
+// create logger
+
+log = new Logger('server', Logger.LEVEL_DEBUG)
+
 // constants
 
 const DB_DIR_PATH = 'db'
@@ -23,17 +27,25 @@ const CURR_GAMES_DIR_PATH = `${DB_DIR_PATH}/current_games`
 const OLD_GAMES_DIR_PATH = `${DB_DIR_PATH}/old_games`
 const ACCOUNTS_DIR_PATH = `${DB_DIR_PATH}/accounts`
 
-uuidn.UUID_NICKNAMES_PATH = `${DB_DIR_PATH}/uuid_nicknames.json`
-const UUID_NICKNAMES_PATH = uuidn.UUID_NICKNAMES_PATH
+const UUID_NICKNAMES_FILE_PATH = `${DB_DIR_PATH}/uuid_nicknames.json`
+if (!fs.existsSync(UUID_NICKNAMES_FILE_PATH)) {
+	let ctx = 'uuidn_init'
+	log.warning(`uuid nicknames file ${UUID_NICKNAMES_FILE_PATH} not found`, ctx)
+	
+	// create uuid nicknames file
+	fs.writeFileSync(UUID_NICKNAMES_FILE_PATH, JSON.stringify({
+		created: new Date().toISOString(),
+		nicknames: {},
+		uuids: {}
+	}))
+	log.info('created initial uuid nicknames file', ctx)
+}
+uuidn.init(UUID_NICKNAMES_FILE_PATH)
 
 const GAME_RESULT_UNKNOWN = 0
 const GAME_RESULT_WIN = 1
 const GAME_RESULT_LOSS = 2
 const GAME_RESULT_TIE = 3
-
-// create logger
-
-log = new Logger('server', Logger.LEVEL_DEBUG)
 
 // configure environment variables
 process.env.PORT = 80
@@ -100,18 +112,6 @@ if (!fs.existsSync(ACCOUNTS_DIR_PATH)) {
 	// create accounts dir
 	fs.mkdirSync(ACCOUNTS_DIR_PATH)
 	log.info('created empty accounts folder')
-}
-
-if (!fs.existsSync(UUID_NICKNAMES_PATH)) {
-	log.warning(`uuid nicknames file ${UUID_NICKNAMES_PATH} not found`)
-	
-	// create uuid nicknames file
-	fs.writeFileSync(UUID_NICKNAMES_PATH, JSON.stringify({
-		created: new Date().toISOString(),
-		nicknames: {},
-		uuids: {}
-	}))
-	log.info('created initial uuid nicknames file')
 }
 
 // launch web server
@@ -209,6 +209,36 @@ server.route('/account/old_games')
 			promises.push(
 				game_summary(game_id, false)
 				.then(function(summary) {
+					// ensure nickname is defined
+					if (summary.nickname == undefined) {
+						summary.nickname = uuidn.generate_uuid_nickname().nickname
+						uuidn.save(summary.id, summary.nickname)
+						
+						let game_f = `${OLD_GAMES_DIR_PATH}/${summary.id}.json`
+						fs.promises.readFile(game_f)
+						.then(function(game_str) {
+							let game = JSON.parse(game_str)
+							game.nickname = summary.nickname
+							
+							fs.promises.writeFile(game_f, JSON.stringify(game))
+							.then(() => {
+								log.info(
+									`updated game ${summary.id} with nickname ${summary.nickname}`, 
+									ctx
+								)
+							})
+							.catch(function(err) {
+								log.error(
+									`update to game nickname ${summary.id} ${summary.nickname} failed`, 
+									ctx
+								)
+							})
+						})
+						.catch(function(err) {
+							log.error(`failed to fetch old game ${summary.id}`)
+						})
+					}
+					
 					result.games.push(summary)
 				})
 				.catch(function() {
@@ -224,6 +254,7 @@ server.route('/account/old_games')
 		})
 	})
 	.catch(function(err) {
+		console.log(err)
 		result.result = 'fail'
 		result.why = 'fs read file'
 	})

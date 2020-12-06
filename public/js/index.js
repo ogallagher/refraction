@@ -32,6 +32,9 @@ $(document).ready(function() {
 	
 	index_log.debug('window loaded',ctx)
 	
+	// init game config pane
+	$('#config-body input').prop('disabled',true)
+	
 	// init local-online switch
 	let mode = cookies_get('local_online_mode')
 	if (mode == null || mode == 'local') {
@@ -48,6 +51,26 @@ $(document).ready(function() {
 	$('#local-online-switch')
 	.prop('checked', !local)
 	.change(on_local_online_switch)
+	
+	// bind game config inputs with labels
+	$('#config-num-teams').change(function(e) {
+		$('#config-num-teams-out').html(e.target.value)
+	})
+	$('#config-match-limit').change(function(e) {
+		$('#config-match-limit-out').html(e.target.value)
+	})
+	$('#config-frame-limit').change(function(e) {
+		$('#config-frame-limit-out').html(e.target.value)
+	})
+	$('#config-player-radius').change(function(e) {
+		$('#config-player-radius-out').html(e.target.value)
+	})
+	$('#config-player-speed').change(function(e) {
+		$('#config-player-speed-out').html(e.target.value)
+	})
+	$('#config-bullet-length').change(function(e) {
+		$('#config-bullet-length-out').html(e.target.value)
+	})
 	
 	if (editing) {
 		// tests
@@ -164,6 +187,28 @@ function login() {
 		
 			$('#login').hide()
 			resolve(username)
+		}
+	})
+}
+
+function refresh_games(current_regardless=true) {
+	let ctx = 'refresh_games'
+	
+	return new Promise(function(resolve,reject) {
+		index_log.debug('refreshing games', ctx)
+		
+		if (current_regardless || account.current_games.length == 0) {
+			// reload account current games and history
+			fetch_account(account.username)
+			.then(load_current_games)
+			.then(load_old_games)
+			.then(enable_game_selection)
+			.then(resolve)
+		}
+		else {
+			// continue using existing current games list
+			enable_game_selection()
+			resolve()
 		}
 	})
 }
@@ -293,19 +338,7 @@ function next_game() {
 		}
 	}
 	
-	new Promise(function(resolve,reject) {
-		if (account.current_games.length == 0) {
-			// reload account current games and history
-			fetch_account(account.username)
-			.then(load_current_games)
-			.then(load_old_games)
-			.then(resolve)
-		}
-		else {
-			// continue using existing current games list
-			resolve()
-		}
-	})
+	refresh_games(false)
 	.then(() => {
 		// account.current_games is updated
 		if (account.current_games.length == 0) {
@@ -322,8 +355,6 @@ function next_game() {
 		
 		// enable selection of new, current, random available, or history game.
 		index_log.info(`ready for selection of new, current, available, or old game`)
-		
-		enable_game_selection()
 	})
 }
 
@@ -458,6 +489,7 @@ function find_game() {
 }
 
 function game_stats() {
+	// read-only attributes
 	$('#game-id').html(game.id)
 	$('#game-nickname').html(game.nickname)
 	
@@ -505,6 +537,40 @@ function game_stats() {
 	$('#scores').html(scores.join('<br>'))
 	
 	$('#frame-limit').html(game.frame_limit)
+	
+	// writable settings
+	game_config()
+}
+
+function game_config() {
+	if (local || game.ghosts.length == 0) {
+		$('#config-num-teams').val(2).change()
+		$('#config-match-limit').val(Game.DEFAULT_MATCH_LIMIT).change()
+		$('#config-frame-limit').val(Game.DEFAULT_FRAME_LIMIT).change()
+		$('#config-player-radius').val(10).change()
+		$('#config-player-speed').val(10).change()
+		$('#config-bullet-length').val(50).change()
+		
+		$('#config-body input').prop('disabled',false)
+	}
+	else {
+		$('#config-num-teams').val(game.num_teams).change()
+		$('#config-match-limit').val(game.match_limit).change()
+		$('#config-frame-limit').val(game.frame_limit).change()
+		
+		let game_player
+		if (game.old) {
+			game_player = game.ghosts[game.ghosts.length-1]
+		}
+		else {
+			game_player = game.player
+		}
+		$('#config-player-radius').val(game_player.radius).change()
+		$('#config-player-speed').val(game_player.speed).change()
+		$('#config-bullet-length').val(game.bullet_length || Bullet.DEFAULT_LENGTH).change()
+		
+		$('#config-body input').prop('disabled',true)
+	}
 }
 
 function current_game_stats(game) {
@@ -934,6 +1000,9 @@ function move_to_history(game) {
 		index_log.debug(`remove ${game.id} from current games`, ctx)
 		account.current_games.splice(ci,1)
 	}
+	
+	// remove from current games section
+	$(`.current-game[data-game-id="${game.id}"]`).remove()
 	
 	// add to account.old_games
 	let oi = account.old_games.indexOf(game.id)

@@ -20,6 +20,8 @@
         
         <!-- js external -->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.15.0/umd/popper.min.js"></script> -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.2/paper-full.min.js"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.1.0/uuidv4.min.js"></script>
 		
@@ -91,6 +93,72 @@
 						</div>
 					</div>
 				</div>
+				<div id="config">
+					<button 
+						id="config-header" class="btn px-0" 
+						data-toggle="collapse" data-target="#config-body">
+						<span class="h3">game configuration</span>
+					</button>
+					<hr>
+					<div id="config-body" class="collapse">
+						<div id="game-config" class="form-row px-2">
+							<div class="form-group col-6 col-lg-12">
+								<label for="config-num-teams">
+									number of teams:
+									<strong id="config-num-teams-out">2</strong>
+								</label>
+								<input 
+									id="config-num-teams" class="custom-range" 
+									type="range" min="2" max="4" value="2">
+							</div>
+							<div class="form-group col-6 col-lg-12">
+								<label for="config-match-limit">
+									number of rounds:
+									<strong id="config-match-limit-out">8</strong>
+								</label>
+								<input
+									id="config-match-limit" class="custom-range" type="range" 
+									min="2" max="16" value="8">
+							</div>
+							<div class="form-group col-6 col-lg-12">
+								<label for="config-frame-limit">
+									frame limit (round time):
+									<strong id="config-frame-limit-out">1000</strong>
+								</label>
+								<input
+									id="config-frame-limit" class="custom-range" type="range" 
+									min="500" max="10000" value="1000" step="100">
+							</div>
+							<div class="form-group col-6 col-lg-12">
+								<label for="config-player-radius">
+									player radius:
+									<strong id="config-player-radius-out">10</strong>
+								</label>
+								<input 
+									id="config-player-radius" class="custom-range" type="range"
+									min="5" max="30" value="10">
+							</div>
+							<div class="form-group col-6 col-lg-12">
+								<label for="config-player-speed">
+									player speed:
+									<strong id="config-player-speed-out">2.0</strong>
+								</label>
+								<input 
+									id="config-player-speed" class="custom-range" type="range"
+									min="1.0" max="6.0" step="0.1">
+							</div>
+							<div class="form-group col-6 col-lg-12">
+								<label for="config-bullet-length">
+									bullet tracer length: 
+									<strong id="config-bullet-length-out">50</strong>
+								</label>
+								<input 
+									id="config-bullet-length" class="custom-range" type="range"
+									min="5" max="200" step="5">
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 			<div id="center" class="col-lg-auto py-2 px-1 text-center">
 				<canvas id="game-canvas" style="display:none;"></canvas>
@@ -104,8 +172,13 @@
 				</div>
 			</div>
 			<div id="right" class="col-lg py-2 px-1">
+				<div class="text-center">
+					<button id="refresh-current" class="btn btn-primary" onclick="refresh_games()">
+						refresh games
+					</button>
+				</div>
 				<div class="row p-3">
-					<div id="current" class="col col-lg-12">
+					<div id="current" class="col-6 col-lg-12">
 						<div class="text-left h3">
 							current
 						</div>
@@ -114,7 +187,7 @@
 							</div>
 						</div>
 					</div>
-					<div id="pending" class="col col-lg-12">
+					<div id="pending" class="col-6 col-lg-12">
 						<div class="text-left h3">
 							pending
 						</div>
@@ -123,7 +196,7 @@
 							</div>
 						</div>
 					</div>
-					<div id="history" class="col col-lg-12">
+					<div id="history" class="col-6 col-lg-12">
 						<div class="text-left h3">
 							history
 						</div>

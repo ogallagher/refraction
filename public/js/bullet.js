@@ -27,7 +27,7 @@ class Bullet {
 		
 		// config
 		this.radius = 5
-		this.length = 50
+		this.length = Bullet.DEFAULT_LENGTH
 		this.speed = 10
 		this.deleted = false
 		
@@ -118,3 +118,5 @@ class Bullet {
 		this.graphic.remove()
 	}
 }
+
+Bullet.DEFAULT_LENGTH = 50

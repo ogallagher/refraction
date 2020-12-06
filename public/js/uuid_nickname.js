@@ -299,6 +299,22 @@ if (is_module) {
 	// path is customizable and exposed to importer
 	let UUID_NICKNAMES_FILE_PATH = 'db/uuid_nicknames.json'
 	
+	// module variable: uuid-nickname dictionary object
+	let uuidn = {}
+	
+	function init(uuidn_f_path) {
+		let ctx = 'init'
+		
+		if (uuidn_f_path != undefined) {
+			UUID_NICKNAMES_FILE_PATH = uuidn_f_path
+		}
+		
+		fs.promises.readFile(UUID_NICKNAMES_FILE_PATH)
+		.then(function(uuidn_str) {
+			uuidn = JSON.parse(uuidn_str)
+		})
+	}
+	
 	// methods
 	function recover(key, is_uuid=true) {
 		return new Promise(function(resolve,reject) {
@@ -334,25 +350,21 @@ if (is_module) {
 	}
 	
 	function save(uuid, nickname) {
-		fs.promises.readFile(UUID_NICKNAMES_FILE_PATH)
-		.then(function(uuidn_str) {
-			let uuidn = JSON.parse(uuidn_str)
-			
-			uuidn.uuids[nickname] = uuid
-			uuidn.nicknames[uuid] = nickname
-			
-			fs.promises.writeFile(UUID_NICKNAMES_FILE_PATH, JSON.stringify(uuidn))
-			.then(function() {
-				uuidn_log.debug(`saved ${uuid}=${nickname} to uuid-nicknames file`)
-			})
-			.catch(function(err) {
-				console.log(err)
-			})
+		uuidn.uuids[nickname] = uuid
+		uuidn.nicknames[uuid] = nickname
+		
+		fs.promises.writeFile(UUID_NICKNAMES_FILE_PATH, JSON.stringify(uuidn))
+		.then(function() {
+			uuidn_log.debug(`saved ${uuid}=${nickname} to uuid-nicknames file`)
+		})
+		.catch(function(err) {
+			console.log(err)
 		})
 	}
 	
 	// exports
 	exports.UUID_NICKNAMES_FILE_PATH = UUID_NICKNAMES_FILE_PATH
+	exports.init = init
 	exports.generate_uuid_nickname = generate_uuid_nickname
 	exports.recover_nickname = recover_nickname
 	exports.recover_uuid = recover_uuid
