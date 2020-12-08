@@ -148,8 +148,15 @@ server.route('/account/login')
 				result.result = 'fail'
 			}
 			else {
-				result.account = JSON.parse(account_str)
-				result.result = 'pass'
+				try {
+					result.account = JSON.parse(account_str)
+					result.result = 'pass'
+				}
+				catch (err) {
+					log.error(err.message, ctx)
+					result.result = 'fail'
+				}
+				
 			}
 			
 			res.json(result)

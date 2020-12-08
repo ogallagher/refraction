@@ -12,7 +12,11 @@ class Game {
 	Game class.
 	*/
 	
-	constructor(canvas_el, username, state, num_teams=Game.DEFAULT_NUM_TEAMS, team=0, local=false) {
+	constructor(canvas_el, username, state, 
+		num_teams=Game.DEFAULT_NUM_TEAMS, 
+		team=0, 
+		local=false,
+		on_load=null) {
 		/*
 		Game constructor
 		
@@ -226,9 +230,7 @@ class Game {
 		this.paused = true
 		this.result = Game.RESULT_UNKNOWN
 		
-		this.on_finish = function() {
-			game_log.debug('game.on_finish undefined')
-		}
+		this.on_finish = null
 		
 		// in event handlers, this references this.paper.view
 		let self = this
@@ -279,7 +281,7 @@ class Game {
 			}
 		}
 		
-		if (!self.old) {
+		if (!this.old) {
 			let tool = new paper.Tool()
 			
 			tool.onKeyDown = function(event) {
@@ -291,14 +293,20 @@ class Game {
 				self.player.key_up(event)
 			}
 		}
+		
+		if (this.on_load != null) {
+			this.on_load()
+		}
 	}
 	
 	set_num_teams(num_teams) {
 		if (!this.old) {
 			this.num_teams = num_teams
-		
-			this.load_bases()
-			this.clip_obstacles()
+			
+			if (this.paper.view != null) {
+				this.load_bases()
+				this.clip_obstacles()
+			}
 		}
 	}
 	
@@ -314,7 +322,10 @@ class Game {
 	set_player_radius(player_radius) {
 		if (!this.old) {
 			this.player_radius = player_radius
-			this.player.set_radius(player_radius)
+			
+			if (this.paper.view != null) {
+				this.player.set_radius(player_radius)
+			}
 		}
 	}
 	
@@ -639,7 +650,13 @@ class Game {
 		
 		// generate bases
 		let i = 0
-		let view = this.paper.view.size
+		let view
+		try {
+			view = paper.view.size
+		}
+		catch (err) {
+			console.log(err)
+		}
 		
 		if (i < this.num_teams) {
 			let color = new paper.Color(Game.TEAM_COLORS[i])
@@ -726,15 +743,23 @@ class Game {
 	}
 	
 	finish() {
-		if (this.paper != null) {
+		if (this.paper.view != null) {
 			// remove event handlers
 			this.paper.view.onFrame = null
 		}
 		
-		this.remove()
-		
 		if (this.on_finish != null) {
-			this.on_finish(this)
+			let self = this
+			
+			return new Promise(function(resolve) {
+				self.on_finish(self)
+				.catch(function(err) {
+					if (err) {
+						console.log(err)
+					}
+				})
+				.finally(resolve)
+			})
 		}
 	}
 	
@@ -742,7 +767,7 @@ class Game {
 		// deactivate PaperScope
 		if (this.paper != null) {
 			this.paper.remove()
-			this.paper = null
+			game_log.debug(`removed ${this.id} from canvas`, 'remove')
 		}
 	}
 	

@@ -41,6 +41,7 @@ $(document).ready(function() {
 		cookies_set('local_online_mode','local')
 		local = true
 		$('#local-online').html('local')
+		$('#refresh-current').hide()
 	}
 	else {
 		cookies_set('local_online_mode','online')
@@ -271,12 +272,17 @@ function on_local_online_switch() {
 		// remove game over (local/online) before adding it back with next_game
 		$('#game-over').remove()
 		
+		$('#refresh-current').show()
+		
 		// define account
 		login()
 		.then(function(username) {
 			account.username = username
 			
 			// move to next game, which also refreshes account data
+			if (game) {
+				game.remove()
+			}
 			on_game_finish()
 			
 			$('#directions')
@@ -289,6 +295,17 @@ function on_local_online_switch() {
 	else {
 		local = true
 		$('#local-online').html('local')
+		
+		// clear current, pending, old games
+		account.current_games = []
+		$('#current-games').empty()
+		account.pending_games = []
+		$('#pending-games').empty()
+		account.old_games = []
+		$('#history-games').empty()
+		
+		// hide games refresh
+		$('#refresh-current').hide()
 		
 		// show local game over
 		$('#game-over').remove()
@@ -306,6 +323,7 @@ function on_local_online_switch() {
 		if (game != null) {
 			game.on_finish = null
 			game.finish()
+			game.remove()
 			game = null
 		}
 		
@@ -318,14 +336,14 @@ function on_local_online_switch() {
 function next_game() {
 	let ctx = 'next_game'
 	
-	$('#game-canvas').hide()
+	// $('#game-canvas').hide()
 	
+	$('#game-over').remove()
 	$('#center').append($(game_over_cmp))
 	
 	if (game != null) {
 		// clear current game
-		game.on_finish = null
-		game.finish()
+		// game.finish()
 		
 		// move current game to pending or history
 		if (!game.local && game.result != Game.RESULT_UNKNOWN) {
@@ -338,23 +356,38 @@ function next_game() {
 		}
 	}
 	
-	refresh_games(false)
-	.then(() => {
-		// account.current_games is updated
-		if (account.current_games.length == 0) {
-			// confirmed no current games; try random available game
-			fetch_available_game()
-			.then(saved_game)
-			.catch(() => {
-				index_log.error(`failed to fetch any available games`, ctx)
-				$('#directions').html('No existing games currently available.')
-				
-				new_game()
-			})
-		}
-		
-		// enable selection of new, current, random available, or history game.
-		index_log.info(`ready for selection of new, current, available, or old game`)
+	return new Promise(function(resolve) {
+		refresh_games(false)
+		.then(() => {
+			// account.current_games is updated
+			if (account.current_games.length == 0) {
+				// confirmed no current games; try random available game
+				fetch_available_game()
+				.then(saved_game)
+				.catch(() => {
+					index_log.error(`failed to fetch any available games`, ctx)
+					$('#directions').html('No existing games currently available.')
+					
+					new_game()
+				})
+				.finally(() => {
+					resolve()
+				})
+			}
+			else {
+				// select next current game
+				fetch_game(account.current_games[0])
+				.then(function(game_state) {
+					$('#directions').html('Selected next ready game.')
+					saved_game(game_state)
+				})
+				.catch(() => {
+					$('#directions').html('No more current games ready. Generated new game.')
+					new_game()
+					resolve()
+				})
+			}
+		})
 	})
 }
 
@@ -366,8 +399,10 @@ function enable_game_selection() {
 		
 		fetch_game(game_id, true)
 		.then(function(game_state) {
-			if (game != null) {
-				game.finish()
+			if (game) {
+				game.remove()
+				$('#game-over').remove()
+				$('#center').append($(game_over_cmp))
 			}
 			
 			saved_game(game_state)
@@ -391,13 +426,17 @@ function enable_game_selection() {
 		
 		fetch_game(game_id, false)
 		.then(function(game_state) {
-			if (game != null) {
-				game.finish()
+			if (game) {
+				console.log('remove current game')
+				game.remove()
+				$('#game-over').remove()
+				$('#center').append($(game_over_cmp))
 			}
 			
+			console.log('load saved game')
 			saved_game(game_state)
 			$('#directions').html(`selected ${game_id} for playback`)
-			
+		
 			$('#game-canvas')[0].scrollIntoView()
 		})
 		.catch(function(err) {
@@ -431,30 +470,34 @@ function local_game(game_state) {
 	game.on_finish = local_game
 
 	game_stats()
+	return Promise.resolve()
 }
 
 function new_game() {
 	let ctx = 'new_game'
 	
+	if (game != null) {
+		game.remove()
+		game = null
+	}
+	
 	// hide game-over screen
 	$('#game-over').remove()
 	
 	// initialize new game
-	game = new Game($('#game-canvas'), account.username, null, 2)
+	game = new Game($('#game-canvas'), account.username, null)
 	game.on_finish = on_game_finish
 	game_stats()
 	
 	// add new game to current_games
 	account.current_games.push(game.id)
 	
-	index_log.info(`began match ${game.scores.length+1} for new game ${game.id}`, ctx)
+	$('#directions').html(`began new game ${game.id}`)
+	return Promise.resolve()
 }
 
 function saved_game(game_state) {
 	let ctx = 'saved_game'
-	
-	// hide game-over screen
-	$('#game-over').remove()
 	
 	// initialize new game
 	game = new Game($('#game-canvas'), account.username, game_state)
@@ -462,6 +505,9 @@ function saved_game(game_state) {
 	
 	if (!game.old) {
 		game.on_finish = on_game_finish
+		
+		// hide game-over screen
+		$('#game-over').remove()
 		
 		// ensure saved game is in account.current_games
 		if (account.current_games.indexOf(game.id) == -1) {
@@ -480,8 +526,22 @@ function find_game() {
 	
 	index_log.info(`finding next available game`)
 	fetch_available_game()
-	.then(saved_game)
+	.then(function(available_game) {
+		if (game) {
+			index_log.debug('finishing game before loading available game')
+			game.finish()
+			game.remove()
+		}
+		
+		saved_game(available_game)
+	})
 	.catch(() => {
+		if (game) {
+			index_log.debug('finishing game before loading new game')
+			game.finish()
+			game.remove()
+		}
+		
 		index_log.error(`no games available`)
 		$('#directions').html('No games available; generated new game.')
 		new_game()
@@ -489,18 +549,21 @@ function find_game() {
 }
 
 function game_stats() {
+	let ctx = 'game_stats'
+	game_arg = game
+	
 	// read-only attributes
-	$('#game-id').html(game.id)
-	$('#game-nickname').html(game.nickname)
+	$('#game-id').html(game_arg.id)
+	$('#game-nickname').html(game_arg.nickname)
 	
 	let teams = []
 	
 	let un = game.usernames.length
-	for (let i=0; i<game.num_teams; i++) {
+	for (let i=0; i<game_arg.num_teams; i++) {
 		let t_color = Game.team_to_color_str(i)
 		
 		if (i < un) {
-			teams.push(`<span style="color: ${t_color}">${game.usernames[i]}</span>`)
+			teams.push(`<span style="color: ${t_color}">${game_arg.usernames[i]}</span>`)
 		}
 		else {
 			teams.push(`<span style="color: ${t_color}">?</span>`)
@@ -512,7 +575,7 @@ function game_stats() {
 	let scores = []
 	let totals = Array(game.num_teams).fill(0)
 	let match = 1
-	for (let scoreboard of game.scores) {
+	for (let scoreboard of game_arg.scores) {
 		let color_scores = []
 		for (let i=0; i<scoreboard.length; i++) {
 			color_scores.push(
@@ -536,75 +599,81 @@ function game_stats() {
 	
 	$('#scores').html(scores.join('<br>'))
 	
-	$('#frame-limit').html(game.frame_limit)
+	$('#frame-limit').html(game_arg.frame_limit)
+	
+	index_log.debug(`updated stats for ${game.id}`)
 	
 	// writable settings
 	game_config()
 }
 
 function game_config() {
-	if (game.ghosts.length == 0) {
+	let ctx = 'game_config'
+	game_arg = game
+	
+	if (game_arg.ghosts.length == 0 && game_arg.result == Game.RESULT_UNKNOWN) {
+		index_log.debug('game result = ' + game_arg.result, ctx)
 		// reset to defaults as customizable
 		$('#config-num-teams')
 		.val(Game.DEFAULT_NUM_TEAMS)
 		.change()
 		.change(function(e) {
-			game.set_num_teams(parseInt(e.target.value))
+			game_arg.set_num_teams(parseInt(e.target.value))
 		})
 		
 		$('#config-match-limit')
 		.val(Game.DEFAULT_MATCH_LIMIT)
 		.change()
 		.change(function(e) {
-			game.match_limit = parseInt(e.target.value)
+			game_arg.match_limit = parseInt(e.target.value)
 		})
 		
 		$('#config-frame-limit')
 		.val(Game.DEFAULT_FRAME_LIMIT)
 		.change()
 		.change(function(e) {
-			game.set_frame_limit(parseInt(e.target.value))
+			game_arg.set_frame_limit(parseInt(e.target.value))
 		})
 		
 		$('#config-player-radius')
 		.val(Player.DEFAULT_RADIUS)
 		.change()
 		.change(function(e) {
-			game.set_player_radius(parseInt(e.target.value))
+			game_arg.set_player_radius(parseInt(e.target.value))
 		})
 		
 		$('#config-player-speed')
 		.val(Player.DEFAULT_SPEED)
 		.change()
 		.change(function(e) {
-			game.set_player_speed(parseFloat(e.target.value))
+			game_arg.set_player_speed(parseFloat(e.target.value))
 		})
 		
 		$('#config-bullet-length')
 		.val(Bullet.DEFAULT_LENGTH)
 		.change()
 		.change(function(e) {
-			game.set_bullet_length(parseInt(e.target.value))
+			game_arg.set_bullet_length(parseInt(e.target.value))
 		})
 		
 		$('#config-body input').prop('disabled',false)
 	}
 	else {
 		// set to game settings as final
-		$('#config-num-teams').val(game.num_teams).change()
-		$('#config-match-limit').val(game.match_limit).change()
-		$('#config-frame-limit').val(game.frame_limit).change()
+		$('#config-num-teams').val(game_arg.num_teams).change()
+		$('#config-match-limit').val(game_arg.match_limit).change()
+		$('#config-frame-limit').val(game_arg.frame_limit).change()
 		
 		let game_player
-		if (game.old) {
-			game_player = game.ghosts[game.ghosts.length-1]
+		if (game_arg.old) {
+			game_player = game_arg.ghosts[game_arg.ghosts.length-1]
 		}
 		else {
-			game_player = game.player
+			game_player = game_arg.player
 		}
 		$('#config-player-radius').val(game_player.radius).change()
 		$('#config-player-speed').val(game_player.speed).change()
-		$('#config-bullet-length').val(game.bullet_length || Bullet.DEFAULT_LENGTH).change()
+		$('#config-bullet-length').val(game_arg.bullet_length || Bullet.DEFAULT_LENGTH).change()
 		
 		$('#config-body input').prop('disabled',true)
 	}
@@ -902,65 +971,68 @@ function fetch_game(game_id, current=true) {
 function on_game_finish(game) {
 	let ctx = 'on_game_finish'
 	
-	next_game()
-	
-	if (game != undefined) {
-		// update current game stats
-		game_stats()
+	return new Promise(function(resolve) {
+		if (game != undefined) {
+			// update current game stats
+			game_stats()
+			
+			if (!game.local && game.result != Game.RESULT_UNKNOWN) {
+				// save new game state
+				index_log.debug('match complete; sending new state to server', ctx)
+				new Promise(function(resolve,reject) {
+					index_log.debug('saving game')
+					
+					let game_state = game.save_state()
+					game.remove()
 		
-		if (!game.local && game.result != Game.RESULT_UNKNOWN) {
-			// save new game state
-			index_log.debug('match complete; sending new state to server', ctx)
-			new Promise(function(resolve,reject) {
-				index_log.debug('saving game')
-		
-				let game_state = game.save_state()
-				game.remove()
-		
-				$.ajax({
-					method: 'POST',
-					dataType: 'json',
-					url: UPDATE_GAME_URL,
-					data: {
-						username: account.username,
-						game: game_state
-					},
-					success: function(res) {
-						if (res.result == 'pass') {
-							index_log.info(
-								`saved new state of game ${game.id}`, 
-								UPDATE_GAME_URL
-							)
-							resolve()
-						}
-						else {
+					$.ajax({
+						method: 'POST',
+						dataType: 'json',
+						url: UPDATE_GAME_URL,
+						data: {
+							username: account.username,
+							game: game_state
+						},
+						success: function(res) {
+							if (res.result == 'pass') {
+								index_log.info(
+									`saved new state of game ${game.id}`, 
+									UPDATE_GAME_URL
+								)
+								resolve()
+							}
+							else {
+								index_log.error(
+									`failed to save new state of game ${game.id}: ${res.why}`, 
+									UPDATE_GAME_URL
+								)
+								reject()
+							}
+						},
+						error: function(err) {
 							index_log.error(
-								`failed to save new state of game ${game.id}: ${res.why}`, 
+								`failed to save new state of game ${game.id}: ${err.message}`, 
 								UPDATE_GAME_URL
 							)
 							reject()
 						}
-					},
-					error: function(err) {
-						index_log.error(
-							`failed to save new state of game ${game.id}: ${err.message}`, 
-							UPDATE_GAME_URL
-						)
-						reject()
+					})
+				})
+				.catch((err) => {
+					// save game in client cookies for submission later
+					index_log.info('saving the game to cookies for submission to server later (disabled)')
+					// cookies_set(game.id, JSON.stringify(game_state))
+			
+					if (err) {
+						index_log.error(err.message,UPDATE_GAME_URL)
 					}
 				})
-			})
-			.catch((err) => {
-				// save game in client cookies for submission later
-				index_log.info('saving the game to cookies for submission to server later (disabled)')
-				// cookies_set(game.id, JSON.stringify(game_state))
-			
-				if (err) {
-					index_log.error(err.message,UPDATE_GAME_URL)
-				}
-			})
+			}
 		}
-	}
+		
+		next_game()
+		.then(resolve)
+	})
 }
 
 function is_pending(game) {
