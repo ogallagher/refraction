@@ -49,7 +49,7 @@ class Player {
 		player_log.debug(`init player from ${JSON.stringify(this.init)}`, ctx)
 		
 		this.team = init.team
-		this.base = this.game.bases[Game.team_to_base(this.team)]
+		this.base = this.game.bases[this.team]
 		
 		if (this.team < Game.TEAM_COLORS.length) {
 			this.color = new paper.Color(Game.TEAM_COLORS[this.team])
@@ -110,12 +110,12 @@ class Player {
 		
 		if (this.graphic) {
 			this.graphic.remove()
-			this.graphic = null
+			// this.graphic = null
 		}
 		
 		if (this.shot_indicator) {
 			this.shot_indicator.remove()
-			this.shot_indicator = null
+			// this.shot_indicator = null
 		}
 		
 		let body = new paper.Path.Circle({
@@ -223,16 +223,16 @@ class Player {
 		let key = event.key
 		// player_log.debug('key down = ' + key, 'Player.key_down')
 		
-		if (key == 'w' || key == 'up') {
+		if (key == 'w' || key == 'up' || key == 'ArrowUp') {
 			this.up = true
 		}
-		else if (key == 'd' || key == 'right') {
+		else if (key == 'd' || key == 'right' || key == 'ArrowRight') {
 			this.right = true
 		}
-		else if (key == 's' || key == 'down') {
+		else if (key == 's' || key == 'down' || key == 'ArrowDown') {
 			this.down = true
 		}
-		else if (key == 'a' || key == 'left') {
+		else if (key == 'a' || key == 'left' || key == 'ArrowLeft') {
 			this.left = true
 		}
 		
@@ -243,16 +243,16 @@ class Player {
 		let key = event.key
 		// player_log.debug('key up = ' + key, 'Player.key_up')
 		
-		if (key == 'w' || key == 'up') {
+		if (key == 'w' || key == 'up' || key == 'ArrowUp') {
 			this.up = false
 		}
-		else if (key == 'd' || key == 'right') {
+		else if (key == 'd' || key == 'right' || key == 'ArrowRight') {
 			this.right = false
 		}
-		else if (key == 's' || key == 'down') {
+		else if (key == 's' || key == 'down' || key == 'ArrowDown') {
 			this.down = false
 		}
-		else if (key == 'a' || key == 'left') {
+		else if (key == 'a' || key == 'left' || key == 'ArrowLeft') {
 			this.left = false
 		}
 		

@@ -27,7 +27,7 @@ function cookies_set(key,val) {
 		}
 	}
 	else {
-		document.cookie = key + '=' + val + '; expires=' + date.toUTCString() + '; path=/'
+		document.cookie = key + '=' + val + '; expires=' + date.toUTCString() + '; SameSite=LAX; path=/'
 	}
 	
 	cookies_log.debug(`set cookie ${key}=${val}`,ctx)
@@ -55,7 +55,7 @@ function cookies_get(key) {
 
 function cookies_delete(key) {
 	let ctx = 'cookies_delete'
-    document.cookie = key + '=; expires=-1; path=/'
+    document.cookie = key + '=; expires=-1; SameSite=LAX; path=/'
 	cookies_log.debug(`deleted cookie ${key}`,ctx)
 }
 

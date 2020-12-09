@@ -4,6 +4,9 @@ secrets/
 # Data
 db/
 
+# Multimedia and sharing content
+sharing/
+
 # Dependencies
 node_modules/
 jspm_packages/

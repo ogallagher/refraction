@@ -203,8 +203,8 @@ class Game {
 		}
 		else {
 			// create player
-			let bp = this.bases[this.team].position
-		
+			let bp = this.bases[this.other_team()].position
+			
 			this.player = new Player(this, {
 				position: [bp.x, bp.y], 
 				team: this.team,
@@ -245,7 +245,8 @@ class Game {
 			}
 		}
 		paper.view.onMouseDown = function(event) {
-			game_log.debug('mouse down = ' + event.point, 'onMouseDown')
+			// game_log.debug('mouse down = ' + event.point, 'onMouseDown')
+			canvas_el.focus()
 			
 			if (self.old) {
 				self.paused = !self.paused
@@ -282,16 +283,19 @@ class Game {
 		}
 		
 		if (!this.old) {
-			let tool = new paper.Tool()
-			
-			tool.onKeyDown = function(event) {
-				// game_log.debug('key down = ' + event.key, 'Game.onKeyDown')
+			//listen for key events
+			canvas_el
+			.prop('tabindex',1)
+			.css('outline','none')
+			.on('keydown', function(event) {
+				// game_log.debug('key down = ' + event.key, 'Game.keydown')
 				self.player.key_down(event)
-			}
-			tool.onKeyUp = function(event) {
-				// game_log.debug('key up = ' + event.key, 'Game.onKeyUp')
+			})
+			.on('keyup', function(event) {
+				// game_log.debug('key up = ' + event.key, 'Game.keyup')
 				self.player.key_up(event)
-			}
+			})
+			.focus()
 		}
 		
 		if (this.on_load != null) {
@@ -660,19 +664,7 @@ class Game {
 		
 		if (i < this.num_teams) {
 			let color = new paper.Color(Game.TEAM_COLORS[i])
-			color.alpha = 0.5
-			let base = new paper.Path.Rectangle({
-				point: [-Game.BASE_RAD,-Game.BASE_RAD],
-				size: [Game.BASE_SIZE, Game.BASE_SIZE],
-				position: [Game.BASE_RAD, Game.BASE_RAD],
-				fillColor: color
-			})
-			this.bases.push(base)
-			i++
-		}
-		if (i < this.num_teams) {
-			let color = new paper.Color(Game.TEAM_COLORS[i])
-			color.alpha = 0.5
+			color.alpha = 0.2
 			let base = new paper.Path.Rectangle({
 				point: [-Game.BASE_RAD,-Game.BASE_RAD],
 				size: [Game.BASE_SIZE, Game.BASE_SIZE],
@@ -684,11 +676,11 @@ class Game {
 		}
 		if (i < this.num_teams) {
 			let color = new paper.Color(Game.TEAM_COLORS[i])
-			color.alpha = 0.5
+			color.alpha = 0.2
 			let base = new paper.Path.Rectangle({
 				point: [-Game.BASE_RAD,-Game.BASE_RAD],
 				size: [Game.BASE_SIZE, Game.BASE_SIZE],
-				position: [view.width-Game.BASE_RAD, Game.BASE_RAD],
+				position: [Game.BASE_RAD, Game.BASE_RAD],
 				fillColor: color
 			})
 			this.bases.push(base)
@@ -696,11 +688,23 @@ class Game {
 		}
 		if (i < this.num_teams) {
 			let color = new paper.Color(Game.TEAM_COLORS[i])
-			color.alpha = 0.5
+			color.alpha = 0.2
 			let base = new paper.Path.Rectangle({
 				point: [-Game.BASE_RAD,-Game.BASE_RAD],
 				size: [Game.BASE_SIZE, Game.BASE_SIZE],
 				position: [Game.BASE_RAD, view.height-Game.BASE_RAD],
+				fillColor: color
+			})
+			this.bases.push(base)
+			i++
+		}
+		if (i < this.num_teams) {
+			let color = new paper.Color(Game.TEAM_COLORS[i])
+			color.alpha = 0.2
+			let base = new paper.Path.Rectangle({
+				point: [-Game.BASE_RAD,-Game.BASE_RAD],
+				size: [Game.BASE_SIZE, Game.BASE_SIZE],
+				position: [view.width-Game.BASE_RAD, Game.BASE_RAD],
 				fillColor: color
 			})
 			this.bases.push(base)
@@ -718,7 +722,7 @@ class Game {
 			player_speed: this.player_speed,
 			bullet_length: this.bullet_length,
 			usernames: this.usernames,
-			team: this.other_team(),
+			team: this.next_team(),
 			obstacles: [],
 			players: [],
 			scores: this.scores,
@@ -771,7 +775,7 @@ class Game {
 		}
 	}
 	
-	other_team() {
+	next_team() {
 		let other = this.team + 1
 		
 		if (other >= this.num_teams) {
@@ -781,20 +785,9 @@ class Game {
 		return other
 	}
 	
-	static team_to_base(team) {
-		switch (team) {
-			case 0:
-				return 1
-		
-			case 1:
-				return 0
-			
-			case 2:
-				return 3
-		
-			case 3:
-				return 2
-		}
+	other_team() {
+		// map 0-->1, 1-->0, 2-->3, 3-->2, etc
+		return this.team + (1 - (this.team % 2)*2)
 	}
 	
 	static team_to_color_str(team) {
