@@ -654,6 +654,7 @@ class Game {
 		
 		// generate bases
 		let i = 0
+		let nt = 2 * Math.ceil(this.num_teams / 2)
 		let view
 		try {
 			view = paper.view.size
@@ -662,7 +663,7 @@ class Game {
 			console.log(err)
 		}
 		
-		if (i < this.num_teams) {
+		if (i < nt) {
 			let color = new paper.Color(Game.TEAM_COLORS[i])
 			color.alpha = 0.2
 			let base = new paper.Path.Rectangle({
@@ -674,7 +675,7 @@ class Game {
 			this.bases.push(base)
 			i++
 		}
-		if (i < this.num_teams) {
+		if (i < nt) {
 			let color = new paper.Color(Game.TEAM_COLORS[i])
 			color.alpha = 0.2
 			let base = new paper.Path.Rectangle({
@@ -686,7 +687,7 @@ class Game {
 			this.bases.push(base)
 			i++
 		}
-		if (i < this.num_teams) {
+		if (i < nt) {
 			let color = new paper.Color(Game.TEAM_COLORS[i])
 			color.alpha = 0.2
 			let base = new paper.Path.Rectangle({
@@ -698,7 +699,7 @@ class Game {
 			this.bases.push(base)
 			i++
 		}
-		if (i < this.num_teams) {
+		if (i < nt) {
 			let color = new paper.Color(Game.TEAM_COLORS[i])
 			color.alpha = 0.2
 			let base = new paper.Path.Rectangle({
