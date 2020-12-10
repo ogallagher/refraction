@@ -133,7 +133,7 @@ $(document).ready(function() {
 			index_log.debug('loading old games', ctx)
 			promises.push(load_old_games())
 			
-			Promise.all(promises)
+			return Promise.all(promises)
 			.then(enable_game_selection)
 		})
 		.catch(() => {
@@ -196,9 +196,8 @@ function refresh_games(current_regardless=true) {
 	let ctx = 'refresh_games'
 	
 	return new Promise(function(resolve,reject) {
-		index_log.debug('refreshing games', ctx)
-		
 		if (current_regardless || account.current_games.length == 0) {
+			index_log.debug('refreshing games', ctx)
 			// reload account current games and history
 			fetch_account(account.username)
 			.then(load_current_games)
@@ -207,6 +206,7 @@ function refresh_games(current_regardless=true) {
 			.then(resolve)
 		}
 		else {
+			index_log.debug('skipping games refresh', ctx)
 			// continue using existing current games list
 			enable_game_selection()
 			resolve()
@@ -359,9 +359,11 @@ function next_game() {
 	return new Promise(function(resolve) {
 		refresh_games(false)
 		.then(() => {
+			console.log('account.current_games = ' + account.current_games)
 			// account.current_games is updated
 			if (account.current_games.length == 0) {
 				// confirmed no current games; try random available game
+				index_log.debug('no more current games; finding available games')
 				fetch_available_game()
 				.then(saved_game)
 				.catch(() => {
@@ -849,12 +851,18 @@ function load_current_games() {
 	let promises = []
 	
 	return new Promise(function(resolve) {
-		for (let game_id of account.current_games) {
+		let n = account.current_games.length
+		
+		for (let i=0; i<n; i++) {
+			let game_id = account.current_games[i]
 			promises.push(
 				fetch_game_summary(game_id)
 				.then(function(game_state) {
 					if (is_pending(game_state)) {
+						index_log.debug(`fetched pending game ${game_id}`, ctx)
 						move_to_pending(game_state)
+						i--
+						n--
 					}
 					else {
 						index_log.debug(`fetched current game ${game_id}`, ctx)

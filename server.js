@@ -293,7 +293,7 @@ server.route('/game')
 	
 	fs.readFile(game_f, function(err, game_str) {
 		if (err) {
-			log.error(`failed to load ${current} game ${game_id}: ${err.message}`,ctx)
+			log.error(`failed to load ${current ? 'current' : 'old'} game ${game_id}: ${err.message}`,ctx)
 			result.result = 'fail'
 			result.why = 'not found'
 		}
