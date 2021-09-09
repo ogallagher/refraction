@@ -28,7 +28,7 @@ let AVAILABLE_GAME_URL = '/available_game'
 let GAME_SUMMARY_URL = '/game_summary'
 
 $(document).ready(function() {
-	let ctx = 'window.onload'
+	let ctx = 'document.ready'
 	
 	index_log.debug('window loaded',ctx)
 	

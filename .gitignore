@@ -1,6 +1,9 @@
 # Secrets
 secrets/
 
+# Testing
+testing/
+
 # Data
 db/
 
