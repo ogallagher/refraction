@@ -26,35 +26,35 @@ Your objective is to get as many of your players to the opposite base as possibl
 
 The game can be played with 2,3, or 4 teams. The arena is a square, and each base is a corner. Let's assume the game is just 2 teams, blue vs orange, and run an example.
 
-1. The first turn, blue moves their player to the opposite corner, which seems easy enough.
+1. The first turn, blue moves to the opposite corner, which seems easy enough. Score is **1 to 0**.
 
 ![refraction_playthrough_local_1_1](https://user-images.githubusercontent.com/17031438/101527575-2fffcd80-395c-11eb-8ad5-2fe291c7d7b0.gif)
 
-2. On orange's turn, they then run the opposite direction, and takes out blue's first player on the way.
+2. On orange's turn, they then run the opposite direction, and takes out blue's first player on the way. Score is now **1 to 1**.
 
 ![refraction_playthrough_local_1_2](https://user-images.githubusercontent.com/17031438/101527578-30986400-395c-11eb-9ed6-459dea4be897.gif)
 
-3. ...
+3. Back to blue two, who manages to shoot orange one before they can shoot blue one. Blue scores 2 points! Score is now **3 to 1**.
 
 ![refraction_playthrough_local_1_3](https://user-images.githubusercontent.com/17031438/101527580-3130fa80-395c-11eb-8c09-874adbb4a2a1.gif)
 
-4. ...
+4. Orange two avenges orange one, but not quick enough to save them. Score is now **3 to 2**.
 
 ![refraction_playthrough_local_1_4](https://user-images.githubusercontent.com/17031438/101527582-3130fa80-395c-11eb-8775-6ed0934fdff2.gif)
 
-5. ...
+5. Blue three takes out orange two, saving one of the blue team to score 2 more points. Blue now leads significantly, **5 to 2**.
 
 ![refraction_playthrough_local_1_5](https://user-images.githubusercontent.com/17031438/101527585-31c99100-395c-11eb-812a-5d420b8c126b.gif)
 
-6. ...
+6. Orange three struggles to help out, and doesn’t manage any kills until the other orange players are already dead. Score is **5 to 3**.
 
 ![refraction_playthrough_local_1_6](https://user-images.githubusercontent.com/17031438/101527586-32622780-395c-11eb-846d-ec1866b0aba5.gif)
 
-7. ...
+7. Blue four heads straight for orange three, taking them out before they can shoot anyone. Score is now **8 to 3**.
 
 ![refraction_playthrough_local_1_7](https://user-images.githubusercontent.com/17031438/101527588-32fabe00-395c-11eb-95a6-3fe2dae94fcb.gif)
 
-8. ...
+8. In the final round, orange four fails to make much of a difference, letting blue score again. The final score is **10 to 4**.
 
 ![refraction_playthrough_local_1_8](https://user-images.githubusercontent.com/17031438/101527592-32fabe00-395c-11eb-82a9-d9927495be44.gif)
 
