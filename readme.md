@@ -4,6 +4,8 @@ A local & remote asynchronous multiplayer action shooter.
 
 ## Play
 
+Available to play at [ogallagher.itch.io/refraction](https://ogallagher.itch.io/refraction).
+
 ### Controls
 
 WASD or arrow keys to run up, left, down, and right.
